@@ -1,7 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:hive_flutter/hive_flutter.dart';
 
 import '../../core/constants.dart';
+import '../../data/models/favorite_work.dart';
+import '../../data/repositories/favorites_repository.dart';
 import '../../services/novel_extractor.dart';
+import '../favorites/favorite_card.dart';
 import '../reader/reader_screen.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -14,6 +18,7 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   final _urlController = TextEditingController();
   final _extractor = NovelExtractorService();
+  final _favoritesRepository = FavoritesRepository.instance;
   bool _isLoading = false;
   String? _errorMessage;
 
@@ -23,14 +28,15 @@ class _HomeScreenState extends State<HomeScreen> {
     super.dispose();
   }
 
-  Future<void> _loadChapter() async {
+  Future<void> _loadChapter({String? url}) async {
+    final targetUrl = url ?? _urlController.text;
     setState(() {
       _isLoading = true;
       _errorMessage = null;
     });
 
     try {
-      final chapter = await _extractor.extract(_urlController.text);
+      final chapter = await _extractor.extract(targetUrl);
       if (!mounted) return;
 
       await Navigator.of(context).push(
@@ -44,6 +50,44 @@ class _HomeScreenState extends State<HomeScreen> {
       setState(() {
         _errorMessage = 'Erreur réseau. Vérifiez votre connexion.';
       });
+    } finally {
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
+    }
+  }
+
+  Future<void> _openFavorite(FavoriteWork favorite) async {
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
+
+    try {
+      final chapter = await _extractor.extract(favorite.lastUrl);
+      if (!mounted) return;
+
+      await Navigator.of(context).push(
+        MaterialPageRoute<void>(
+          builder: (_) => ReaderScreen(
+            chapter: chapter,
+            favoriteId: favorite.id,
+            initialScrollOffset: favorite.scrollOffset,
+          ),
+        ),
+      );
+    } on NovelExtractionException catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(error.message)),
+      );
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Erreur réseau. Vérifiez votre connexion.'),
+        ),
+      );
     } finally {
       if (mounted) {
         setState(() => _isLoading = false);
@@ -109,7 +153,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       SizedBox(
                         width: double.infinity,
                         child: FilledButton(
-                          onPressed: _isLoading ? null : _loadChapter,
+                          onPressed: _isLoading ? null : () => _loadChapter(),
                           child: _isLoading
                               ? const SizedBox(
                                   width: 22,
@@ -159,33 +203,48 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
               ],
               const SizedBox(height: 32),
-              Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: theme.colorScheme.surfaceContainerLow,
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: theme.colorScheme.outlineVariant),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Icon(
-                      Icons.menu_book_outlined,
-                      color: theme.colorScheme.primary,
-                      size: 28,
-                    ),
-                    const SizedBox(height: 12),
-                    Text(
-                      'Lecture immersive',
-                      style: theme.textTheme.titleMedium,
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      'Typographie optimisée, mode sombre et taille de police ajustable pour une lecture prolongée.',
-                      style: theme.textTheme.bodyMedium,
-                    ),
-                  ],
-                ),
+              Text(
+                'Mes favoris',
+                style: theme.textTheme.titleMedium,
+              ),
+              const SizedBox(height: 12),
+              ValueListenableBuilder<Box<FavoriteWork>>(
+                valueListenable: _favoritesRepository.watchFavorites(),
+                builder: (context, box, _) {
+                  final favorites = _favoritesRepository.getAll();
+
+                  if (favorites.isEmpty) {
+                    return Container(
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: theme.colorScheme.surfaceContainerLow,
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(
+                          color: theme.colorScheme.outlineVariant,
+                        ),
+                      ),
+                      child: Text(
+                        'Aucun favori — ajoutez une œuvre depuis le lecteur.',
+                        style: theme.textTheme.bodyMedium,
+                      ),
+                    );
+                  }
+
+                  return ListView.builder(
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    itemCount: favorites.length,
+                    itemBuilder: (context, index) {
+                      final favorite = favorites[index];
+                      return FavoriteCard(
+                        favorite: favorite,
+                        onTap: _isLoading
+                            ? () {}
+                            : () => _openFavorite(favorite),
+                      );
+                    },
+                  );
+                },
               ),
             ],
           ),
