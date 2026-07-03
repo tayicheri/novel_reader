@@ -1,8 +1,8 @@
-# EchoRead (Novel Reader)
+# Tayi Whisper
 
-Application Flutter Android-first pour extraire et lire le texte de pages web de type novel.
+Application Flutter pour extraire et lire le texte de pages web de type novel.
 
-Design importé depuis le projet Google Stitch **Audio Web Reader** (EchoRead).
+Design UI basé sur le projet Google Stitch **Audio Web Reader** (tokens EchoRead).
 
 ## Prérequis
 
@@ -34,7 +34,7 @@ flutter run -d "iPhone 16"
 
 ## Utilisation
 
-1. Ouvrir l’application **EchoRead**
+1. Ouvrir l’application **Tayi Whisper**
 2. Coller l’URL d’un chapitre novel
 3. Appuyer sur **Charger**
 4. Lire le texte extrait avec réglage de taille et mode sombre
@@ -51,7 +51,13 @@ flutter run -d "iPhone 16"
 - Source Stitch : `projects/8324331772808102895` (Audio Web Reader)
 - Fichiers cache : `.stitch-*.json`, `.stitch-source.html`
 
-## Structure
+## Identifiants
+
+| Plateforme | Valeur |
+|------------|--------|
+| Package Dart | `tayi_whisper` |
+| Android `applicationId` | `com.tayicheri.tayi_whisper` |
+| iOS bundle ID | `com.tayicheri.tayiWhisper` |
 
 ```
 lib/

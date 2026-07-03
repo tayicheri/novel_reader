@@ -1,5 +1,5 @@
 class AppConstants {
-  static const String appName = 'EchoRead';
+  static const String appName = 'Tayi Whisper';
 
   static const String mobileUserAgent =
       'Mozilla/5.0 (Linux; Android 13) AppleWebKit/537.36 '

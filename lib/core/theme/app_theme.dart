@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
-/// Design tokens from Stitch project "Audio Web Reader" (EchoRead).
+/// Design tokens from Stitch project "Audio Web Reader" (app: Tayi Whisper).
 class AppColors {
   static const Color primary = Color(0xFF004AC6);
   static const Color primaryContainer = Color(0xFF2563EB);

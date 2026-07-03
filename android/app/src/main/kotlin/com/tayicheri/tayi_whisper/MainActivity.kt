@@ -1,4 +1,4 @@
-package com.novelreader.novel_reader
+package com.tayicheri.tayi_whisper
 
 import io.flutter.embedding.android.FlutterActivity
 
