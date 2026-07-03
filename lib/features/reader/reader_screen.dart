@@ -9,6 +9,7 @@ import '../../data/repositories/favorites_repository.dart';
 import '../../services/novel_extractor.dart';
 import '../../services/work_title_suggester.dart';
 import '../favorites/add_favorite_dialog.dart';
+import 'chapter_swipe_hints.dart';
 
 class ReaderScreen extends StatefulWidget {
   const ReaderScreen({
@@ -29,18 +30,31 @@ class ReaderScreen extends StatefulWidget {
 class _ReaderScreenState extends State<ReaderScreen> {
   final _favoritesRepository = FavoritesRepository.instance;
   final _titleSuggester = WorkTitleSuggester();
+  final _extractor = NovelExtractorService();
   final _scrollController = ScrollController();
+
+  static const _swipeDistanceThreshold = 80.0;
+  static const _idleDuration = Duration(milliseconds: 1500);
+
+  late NovelChapter _currentChapter;
 
   bool _isDarkMode = false;
   ReaderFontSize _fontSize = ReaderFontSize.medium;
   String? _favoriteId;
+  bool _isNavigating = false;
+  bool _showHints = false;
+
   Timer? _saveDebounce;
+  Timer? _idleTimer;
+  Offset? _pointerDown;
 
   @override
   void initState() {
     super.initState();
+    _currentChapter = widget.chapter;
     _favoriteId = widget.favoriteId;
     _scrollController.addListener(_onScroll);
+    _scheduleIdleHints();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted || widget.initialScrollOffset <= 0) return;
       if (_scrollController.hasClients) {
@@ -57,6 +71,7 @@ class _ReaderScreenState extends State<ReaderScreen> {
   @override
   void dispose() {
     _saveDebounce?.cancel();
+    _idleTimer?.cancel();
     _persistProgress();
     _scrollController
       ..removeListener(_onScroll)
@@ -65,9 +80,28 @@ class _ReaderScreenState extends State<ReaderScreen> {
   }
 
   void _onScroll() {
+    _onUserInteraction();
     if (_favoriteId == null) return;
     _saveDebounce?.cancel();
     _saveDebounce = Timer(const Duration(milliseconds: 500), _persistProgress);
+  }
+
+  void _onUserInteraction() {
+    if (_showHints) {
+      setState(() => _showHints = false);
+    }
+    _scheduleIdleHints();
+  }
+
+  void _scheduleIdleHints() {
+    _idleTimer?.cancel();
+    if (_currentChapter.previousUrl == null && _currentChapter.nextUrl == null) {
+      return;
+    }
+    _idleTimer = Timer(_idleDuration, () {
+      if (!mounted) return;
+      setState(() => _showHints = true);
+    });
   }
 
   Future<void> _persistProgress() async {
@@ -76,13 +110,103 @@ class _ReaderScreenState extends State<ReaderScreen> {
 
     await _favoritesRepository.updateProgress(
       id: id,
-      url: widget.chapter.sourceUrl,
+      url: _currentChapter.sourceUrl,
       scrollOffset: _scrollController.offset,
     );
   }
 
+  void _onPointerDown(PointerDownEvent event) {
+    _pointerDown = event.position;
+    _onUserInteraction();
+  }
+
+  void _onPointerMove(PointerMoveEvent event) {
+    _onUserInteraction();
+  }
+
+  void _onPointerUp(PointerUpEvent event) {
+    final start = _pointerDown;
+    _pointerDown = null;
+    if (start == null || _isNavigating) return;
+
+    final delta = event.position - start;
+    if (delta.dx.abs() <= delta.dy.abs()) return;
+
+    if (delta.dx < -_swipeDistanceThreshold) {
+      _goToNextChapter();
+    } else if (delta.dx > _swipeDistanceThreshold) {
+      _goToPreviousChapter();
+    }
+  }
+
+  void _goToNextChapter() {
+    final url = _currentChapter.nextUrl;
+    if (url == null) {
+      _showNavigationMessage('Pas de chapitre suivant');
+      return;
+    }
+    _navigateTo(url);
+  }
+
+  void _goToPreviousChapter() {
+    final url = _currentChapter.previousUrl;
+    if (url == null) {
+      _showNavigationMessage('Pas de chapitre précédent');
+      return;
+    }
+    _navigateTo(url);
+  }
+
+  void _showNavigationMessage(String message) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message)),
+    );
+  }
+
+  Future<void> _navigateTo(String url) async {
+    await _persistProgress();
+    if (!mounted) return;
+
+    setState(() {
+      _isNavigating = true;
+      _showHints = false;
+    });
+
+    try {
+      final chapter = await _extractor.extract(url);
+      if (!mounted) return;
+
+      setState(() => _currentChapter = chapter);
+
+      if (_scrollController.hasClients) {
+        _scrollController.jumpTo(0);
+      }
+
+      if (_favoriteId != null) {
+        await _favoritesRepository.updateProgress(
+          id: _favoriteId!,
+          url: url,
+          scrollOffset: 0,
+        );
+      }
+
+      _scheduleIdleHints();
+    } on NovelExtractionException catch (error) {
+      if (mounted) _showNavigationMessage(error.message);
+    } catch (_) {
+      if (mounted) {
+        _showNavigationMessage('Erreur réseau. Vérifiez votre connexion.');
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isNavigating = false);
+      }
+    }
+  }
+
   Future<void> _openSource() async {
-    final uri = Uri.tryParse(widget.chapter.sourceUrl);
+    final uri = Uri.tryParse(_currentChapter.sourceUrl);
     if (uri == null) return;
     await launchUrl(uri, mode: LaunchMode.externalApplication);
   }
@@ -117,8 +241,8 @@ class _ReaderScreenState extends State<ReaderScreen> {
     }
 
     final suggestedTitle = _titleSuggester.suggest(
-      chapterTitle: widget.chapter.title,
-      sourceUrl: widget.chapter.sourceUrl,
+      chapterTitle: _currentChapter.title,
+      sourceUrl: _currentChapter.sourceUrl,
     );
 
     if (!mounted) return;
@@ -132,7 +256,7 @@ class _ReaderScreenState extends State<ReaderScreen> {
 
     final favorite = await _favoritesRepository.save(
       title: title,
-      lastUrl: widget.chapter.sourceUrl,
+      lastUrl: _currentChapter.sourceUrl,
       scrollOffset: _scrollController.hasClients ? _scrollController.offset : 0,
     );
 
@@ -148,6 +272,7 @@ class _ReaderScreenState extends State<ReaderScreen> {
       height: 1.7,
       color: baseTheme.textTheme.bodyMedium?.color,
     );
+    final hintColor = baseTheme.colorScheme.primary;
 
     return Theme(
       data: baseTheme,
@@ -158,7 +283,7 @@ class _ReaderScreenState extends State<ReaderScreen> {
             onPressed: () => Navigator.of(context).pop(),
           ),
           title: Text(
-            widget.chapter.title,
+            _currentChapter.title,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
           ),
@@ -184,57 +309,83 @@ class _ReaderScreenState extends State<ReaderScreen> {
             ),
           ],
         ),
-        body: Column(
+        body: Stack(
           children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(20, 8, 20, 0),
-              child: Row(
-                children: [
-                  Text(
-                    'Taille',
-                    style: baseTheme.textTheme.labelLarge,
-                  ),
-                  const SizedBox(width: 12),
-                  SegmentedButton<ReaderFontSize>(
-                    segments: ReaderFontSize.values
-                        .map(
-                          (size) => ButtonSegment(
-                            value: size,
-                            label: Text(size.label),
-                          ),
-                        )
-                        .toList(),
-                    selected: {_fontSize},
-                    onSelectionChanged: (selection) {
-                      setState(() => _fontSize = selection.first);
-                    },
-                  ),
-                ],
-              ),
-            ),
-            Expanded(
-              child: Scrollbar(
-                controller: _scrollController,
-                child: SingleChildScrollView(
-                  controller: _scrollController,
-                  padding: const EdgeInsets.fromLTRB(20, 16, 20, 32),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+            Column(
+              children: [
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 8, 20, 0),
+                  child: Row(
                     children: [
                       Text(
-                        widget.chapter.title,
-                        style: baseTheme.textTheme.headlineLarge,
+                        'Taille',
+                        style: baseTheme.textTheme.labelLarge,
                       ),
-                      const SizedBox(height: 20),
-                      SelectableText(
-                        widget.chapter.content,
-                        style: bodyStyle,
+                      const SizedBox(width: 12),
+                      SegmentedButton<ReaderFontSize>(
+                        segments: ReaderFontSize.values
+                            .map(
+                              (size) => ButtonSegment(
+                                value: size,
+                                label: Text(size.label),
+                              ),
+                            )
+                            .toList(),
+                        selected: {_fontSize},
+                        onSelectionChanged: (selection) {
+                          setState(() => _fontSize = selection.first);
+                        },
                       ),
                     ],
                   ),
                 ),
-              ),
+                Expanded(
+                  child: Listener(
+                    onPointerDown: _onPointerDown,
+                    onPointerMove: _onPointerMove,
+                    onPointerUp: _onPointerUp,
+                    child: Stack(
+                      children: [
+                        Scrollbar(
+                          controller: _scrollController,
+                          child: SingleChildScrollView(
+                            controller: _scrollController,
+                            padding: const EdgeInsets.fromLTRB(20, 16, 20, 32),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  _currentChapter.title,
+                                  style: baseTheme.textTheme.headlineLarge,
+                                ),
+                                const SizedBox(height: 20),
+                                SelectableText(
+                                  _currentChapter.content,
+                                  style: bodyStyle,
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                        if (_showHints)
+                          ChapterSwipeHints(
+                            showPrevious: _currentChapter.previousUrl != null,
+                            showNext: _currentChapter.nextUrl != null,
+                            color: hintColor,
+                          ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
             ),
+            if (_isNavigating)
+              const ColoredBox(
+                color: Color(0x66000000),
+                child: Center(
+                  child: CircularProgressIndicator(),
+                ),
+              ),
           ],
         ),
       ),

@@ -9,11 +9,151 @@ class NovelChapter {
     required this.title,
     required this.content,
     required this.sourceUrl,
+    this.previousUrl,
+    this.nextUrl,
   });
 
   final String title;
   final String content;
   final String sourceUrl;
+  final String? previousUrl;
+  final String? nextUrl;
+}
+
+class ChapterNavigation {
+  const ChapterNavigation({this.previousUrl, this.nextUrl});
+
+  final String? previousUrl;
+  final String? nextUrl;
+}
+
+class ChapterNavigationParser {
+  static final RegExp _nextText = RegExp(
+    r'\b(next|suivant|suivante|chapitre\s+suivant|épisode\s+suivant|episode\s+next)\b',
+    caseSensitive: false,
+  );
+  static final RegExp _prevText = RegExp(
+    r'\b(prev(ious)?|précédent|précédente|precedent|chapitre\s+précédent|chapitre\s+precedent|épisode\s+précédent)\b',
+    caseSensitive: false,
+  );
+  static final RegExp _nextClass = RegExp(r'next', caseSensitive: false);
+  static final RegExp _prevClass = RegExp(r'prev', caseSensitive: false);
+
+  ChapterNavigation parse(dom.Document document, Uri currentUrl) {
+    String? previous;
+    String? next;
+
+    void assign({String? prev, String? nxt}) {
+      if (prev != null && previous == null) previous = prev;
+      if (nxt != null && next == null) next = nxt;
+    }
+
+    for (final link in document.querySelectorAll('link[rel]')) {
+      final rel = link.attributes['rel']?.toLowerCase() ?? '';
+      final href = link.attributes['href'];
+      if (href == null || href.isEmpty) continue;
+      if (rel.contains('prev')) {
+        assign(prev: _resolveUrl(currentUrl, href));
+      } else if (rel.contains('next')) {
+        assign(nxt: _resolveUrl(currentUrl, href));
+      }
+    }
+
+    for (final anchor in document.querySelectorAll('a[rel]')) {
+      final rel = anchor.attributes['rel']?.toLowerCase() ?? '';
+      final href = anchor.attributes['href'];
+      if (href == null || href.isEmpty) continue;
+      if (rel.contains('prev')) {
+        assign(prev: _resolveUrl(currentUrl, href));
+      } else if (rel.contains('next')) {
+        assign(nxt: _resolveUrl(currentUrl, href));
+      }
+    }
+
+    const cssSelectors = [
+      '.next-chapter a',
+      '.prev-chapter a',
+      '.nav-next a',
+      '.nav-previous a',
+      '.nav-next',
+      '.nav-previous',
+      '.next-chapter',
+      '.prev-chapter',
+      '#next a',
+      '#prev a',
+      '#next',
+      '#prev',
+    ];
+
+    for (final selector in cssSelectors) {
+      final element = document.querySelector(selector);
+      if (element == null) continue;
+      final href = element.attributes['href'] ??
+          element.querySelector('a')?.attributes['href'];
+      if (href == null || href.isEmpty) continue;
+
+      final className =
+          '${element.className} ${element.id} $selector'.toLowerCase();
+      if (_nextClass.hasMatch(className) && !_prevClass.hasMatch(className)) {
+        assign(nxt: _resolveUrl(currentUrl, href));
+      } else if (_prevClass.hasMatch(className) &&
+          !_nextClass.hasMatch(className)) {
+        assign(prev: _resolveUrl(currentUrl, href));
+      }
+    }
+
+    for (final anchor in document.querySelectorAll('a[href]')) {
+      final href = anchor.attributes['href'];
+      if (href == null || href.isEmpty) continue;
+
+      final text = anchor.text.trim();
+      final className = '${anchor.className} ${anchor.id}'.toLowerCase();
+
+      if (_nextText.hasMatch(text) || _matchesNextClass(className)) {
+        assign(nxt: _resolveUrl(currentUrl, href));
+      }
+      if (_prevText.hasMatch(text) || _matchesPrevClass(className)) {
+        assign(prev: _resolveUrl(currentUrl, href));
+      }
+    }
+
+    previous = _filterUrl(previous, currentUrl);
+    next = _filterUrl(next, currentUrl);
+
+    return ChapterNavigation(previousUrl: previous, nextUrl: next);
+  }
+
+  bool _matchesNextClass(String className) {
+    return _nextClass.hasMatch(className) && !_prevClass.hasMatch(className);
+  }
+
+  bool _matchesPrevClass(String className) {
+    return _prevClass.hasMatch(className) && !_nextClass.hasMatch(className);
+  }
+
+  String? _resolveUrl(Uri currentUrl, String href) {
+    final trimmed = href.trim();
+    if (trimmed.isEmpty || trimmed.startsWith('#') || trimmed.startsWith('javascript:')) {
+      return null;
+    }
+
+    final resolved = currentUrl.resolve(trimmed);
+    if (resolved.scheme != 'http' && resolved.scheme != 'https') {
+      return null;
+    }
+    return resolved.toString();
+  }
+
+  String? _filterUrl(String? url, Uri currentUrl) {
+    if (url == null) return null;
+    if (url == currentUrl.toString()) return null;
+
+    final parsed = Uri.tryParse(url);
+    if (parsed == null) return null;
+    if (parsed.host != currentUrl.host) return null;
+
+    return url;
+  }
 }
 
 class NovelExtractionException implements Exception {
@@ -26,6 +166,8 @@ class NovelExtractionException implements Exception {
 }
 
 class NovelExtractorService {
+  final ChapterNavigationParser _navigationParser = ChapterNavigationParser();
+
   Future<NovelChapter> extract(String rawUrl) async {
     final url = _normalizeUrl(rawUrl);
     final response = await http.get(
@@ -49,10 +191,14 @@ class NovelExtractorService {
       );
     }
 
+    final navigation = _navigationParser.parse(document, url);
+
     return NovelChapter(
       title: title.trim(),
       content: content.trim(),
       sourceUrl: url.toString(),
+      previousUrl: navigation.previousUrl,
+      nextUrl: navigation.nextUrl,
     );
   }
 
