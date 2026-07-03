@@ -4,6 +4,7 @@ import 'package:hive_flutter/hive_flutter.dart';
 import '../../core/constants.dart';
 import '../../data/models/favorite_work.dart';
 import '../../data/repositories/favorites_repository.dart';
+import '../../services/chapter_loader_service.dart';
 import '../../services/novel_extractor.dart';
 import '../favorites/favorite_card.dart';
 import '../reader/reader_screen.dart';
@@ -17,7 +18,7 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   final _urlController = TextEditingController();
-  final _extractor = NovelExtractorService();
+  final _chapterLoader = ChapterLoaderService.instance;
   final _favoritesRepository = FavoritesRepository.instance;
   bool _isLoading = false;
   String? _errorMessage;
@@ -36,7 +37,7 @@ class _HomeScreenState extends State<HomeScreen> {
     });
 
     try {
-      final chapter = await _extractor.extract(targetUrl);
+      final chapter = await _chapterLoader.loadChapter(targetUrl);
       if (!mounted) return;
 
       await Navigator.of(context).push(
@@ -64,7 +65,7 @@ class _HomeScreenState extends State<HomeScreen> {
     });
 
     try {
-      final chapter = await _extractor.extract(favorite.lastUrl);
+      final chapter = await _chapterLoader.loadChapter(favorite.lastUrl);
       if (!mounted) return;
 
       await Navigator.of(context).push(

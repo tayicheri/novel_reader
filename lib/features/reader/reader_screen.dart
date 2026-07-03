@@ -7,6 +7,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../core/theme/app_theme.dart';
 import '../../data/repositories/favorites_repository.dart';
 import '../../data/repositories/settings_repository.dart';
+import '../../services/chapter_loader_service.dart';
 import '../../services/novel_extractor.dart';
 import '../../services/work_title_suggester.dart';
 import '../favorites/add_favorite_dialog.dart';
@@ -32,7 +33,7 @@ class _ReaderScreenState extends State<ReaderScreen> {
   final _favoritesRepository = FavoritesRepository.instance;
   final _settingsRepository = SettingsRepository.instance;
   final _titleSuggester = WorkTitleSuggester();
-  final _extractor = NovelExtractorService();
+  final _chapterLoader = ChapterLoaderService.instance;
   final _scrollController = ScrollController();
 
   static const _swipeDistanceThreshold = 80.0;
@@ -57,6 +58,7 @@ class _ReaderScreenState extends State<ReaderScreen> {
     _scrollController.addListener(_onScroll);
     _scheduleIdleHints();
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      _chapterLoader.onChapterDisplayed(_currentChapter);
       if (!mounted || widget.initialScrollOffset <= 0) return;
       if (_scrollController.hasClients) {
         _scrollController.jumpTo(
@@ -175,7 +177,7 @@ class _ReaderScreenState extends State<ReaderScreen> {
     });
 
     try {
-      final chapter = await _extractor.extract(url);
+      final chapter = await _chapterLoader.loadChapter(url);
       if (!mounted) return;
 
       setState(() => _currentChapter = chapter);

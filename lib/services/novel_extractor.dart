@@ -165,11 +165,28 @@ class NovelExtractionException implements Exception {
   String toString() => message;
 }
 
+Uri normalizeNovelUrl(String rawUrl) {
+  final trimmed = rawUrl.trim();
+  if (trimmed.isEmpty) {
+    throw NovelExtractionException('Veuillez saisir une URL.');
+  }
+
+  final withScheme = trimmed.contains('://') ? trimmed : 'https://$trimmed';
+  final uri = Uri.tryParse(withScheme);
+  if (uri == null || !uri.hasScheme || uri.host.isEmpty) {
+    throw NovelExtractionException('URL invalide.');
+  }
+  if (uri.scheme != 'http' && uri.scheme != 'https') {
+    throw NovelExtractionException('Seules les URLs http/https sont supportées.');
+  }
+  return uri;
+}
+
 class NovelExtractorService {
   final ChapterNavigationParser _navigationParser = ChapterNavigationParser();
 
   Future<NovelChapter> extract(String rawUrl) async {
-    final url = _normalizeUrl(rawUrl);
+    final url = normalizeNovelUrl(rawUrl);
     final response = await http.get(
       url,
       headers: {'User-Agent': AppConstants.mobileUserAgent},
@@ -200,23 +217,6 @@ class NovelExtractorService {
       previousUrl: navigation.previousUrl,
       nextUrl: navigation.nextUrl,
     );
-  }
-
-  Uri _normalizeUrl(String rawUrl) {
-    final trimmed = rawUrl.trim();
-    if (trimmed.isEmpty) {
-      throw NovelExtractionException('Veuillez saisir une URL.');
-    }
-
-    final withScheme = trimmed.contains('://') ? trimmed : 'https://$trimmed';
-    final uri = Uri.tryParse(withScheme);
-    if (uri == null || !uri.hasScheme || uri.host.isEmpty) {
-      throw NovelExtractionException('URL invalide.');
-    }
-    if (uri.scheme != 'http' && uri.scheme != 'https') {
-      throw NovelExtractionException('Seules les URLs http/https sont supportées.');
-    }
-    return uri;
   }
 
   String? _extractTitle(dom.Document document) {
