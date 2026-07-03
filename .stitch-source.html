@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>EchoRead - Intelligent Audio Reader</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Hanken+Grotesk:wght@600;700;800&family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@100..900&family=Inter:wght@100..900&display=swap" rel="stylesheet"/>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .glass-player {
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+        }
+        /* Custom track styling for range input to match design system */
+        input[type="range"]::-webkit-slider-runnable-track {
+            height: 6px;
+            background: #e7eeff;
+            border-radius: 3px;
+        }
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            height: 16px;
+            width: 16px;
+            border-radius: 50%;
+            background: #004ac6;
+            margin-top: -5px;
+            cursor: pointer;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+    </style>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "on-tertiary-fixed": "#0b1c30",
+                        "secondary-container": "#dce0e4",
+                        "on-surface-variant": "#434655",
+                        "on-primary-fixed": "#00174b",
+                        "primary": "#004ac6",
+                        "primary-fixed-dim": "#b4c5ff",
+                        "error": "#ba1a1a",
+                        "surface-container-lowest": "#ffffff",
+                        "on-tertiary-fixed-variant": "#38485d",
+                        "surface-container-highest": "#d8e3fb",
+                        "on-primary": "#ffffff",
+                        "on-error": "#ffffff",
+                        "tertiary-fixed-dim": "#b7c8e1",
+                        "inverse-primary": "#b4c5ff",
+                        "primary-container": "#2563eb",
+                        "surface": "#f9f9ff",
+                        "outline": "#737686",
+                        "secondary-fixed-dim": "#c3c7cb",
+                        "surface-variant": "#d8e3fb",
+                        "inverse-surface": "#263143",
+                        "inverse-on-surface": "#ecf1ff",
+                        "tertiary-fixed": "#d3e4fe",
+                        "on-error-container": "#93000a",
+                        "tertiary": "#46566c",
+                        "background": "#f9f9ff",
+                        "on-secondary": "#ffffff",
+                        "on-primary-container": "#eeefff",
+                        "surface-dim": "#cfdaf2",
+                        "surface-container-low": "#f0f3ff",
+                        "on-surface": "#111c2d",
+                        "on-tertiary": "#ffffff",
+                        "on-primary-fixed-variant": "#003ea8",
+                        "on-tertiary-container": "#e9f0ff",
+                        "secondary-fixed": "#dfe3e7",
+                        "outline-variant": "#c3c6d7",
+                        "on-secondary-container": "#5e6367",
+                        "surface-container": "#e7eeff",
+                        "surface-bright": "#f9f9ff",
+                        "on-secondary-fixed-variant": "#43474b",
+                        "primary-fixed": "#dbe1ff",
+                        "error-container": "#ffdad6",
+                        "on-secondary-fixed": "#171c1f",
+                        "surface-container-high": "#dee8ff",
+                        "secondary": "#5a5f62",
+                        "on-background": "#111c2d",
+                        "tertiary-container": "#5e6e85",
+                        "surface-tint": "#0053db"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "stack-gap-lg": "24px",
+                        "stack-gap-md": "16px",
+                        "stack-gap-sm": "8px",
+                        "player-height": "80px",
+                        "container-margin": "20px"
+                    },
+                    "fontFamily": {
+                        "body-sm": ["Inter"],
+                        "body-lg": ["Inter"],
+                        "label-lg": ["Inter"],
+                        "headline-sm": ["Hanken Grotesk"],
+                        "headline-lg-mobile": ["Hanken Grotesk"],
+                        "headline-md": ["Hanken Grotesk"],
+                        "body-md": ["Inter"],
+                        "label-md": ["Inter"],
+                        "headline-lg": ["Hanken Grotesk"]
+                    },
+                    "fontSize": {
+                        "body-sm": ["14px", {"lineHeight": "20px", "fontWeight": "400"}],
+                        "body-lg": ["18px", {"lineHeight": "28px", "fontWeight": "400"}],
+                        "label-lg": ["14px", {"lineHeight": "20px", "letterSpacing": "0.01em", "fontWeight": "600"}],
+                        "headline-sm": ["20px", {"lineHeight": "28px", "fontWeight": "600"}],
+                        "headline-lg-mobile": ["28px", {"lineHeight": "36px", "fontWeight": "700"}],
+                        "headline-md": ["24px", {"lineHeight": "32px", "letterSpacing": "-0.01em", "fontWeight": "600"}],
+                        "body-md": ["16px", {"lineHeight": "24px", "fontWeight": "400"}],
+                        "label-md": ["12px", {"lineHeight": "16px", "fontWeight": "500"}],
+                        "headline-lg": ["32px", {"lineHeight": "40px", "letterSpacing": "-0.02em", "fontWeight": "700"}]
+                    }
+                },
+            },
+        }
+    </script>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background text-on-surface font-body-md min-h-screen flex flex-col">
+<!-- TopAppBar -->
+<header class="fixed top-0 w-full z-50 bg-surface dark:bg-surface-dim border-b border-outline-variant dark:border-outline flex justify-between items-center px-container-margin h-16">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-primary" data-icon="language">language</span>
+<h1 class="text-headline-sm font-headline-sm font-bold text-primary dark:text-primary-fixed-dim">EchoRead</h1>
+</div>
+<div class="flex items-center gap-4">
+<button class="material-symbols-outlined text-on-surface-variant hover:bg-surface-container-high transition-colors p-2 rounded-full active:scale-95 duration-150" data-icon="more_vert">more_vert</button>
+</div>
+</header>
+<!-- Main Canvas -->
+<main class="flex-1 mt-16 pb-[120px] px-container-margin">
+<div class="max-w-3xl mx-auto pt-stack-gap-lg space-y-stack-gap-lg">
+<!-- URL Input Section -->
+<section class="bg-surface-container-low p-stack-gap-md rounded-xl border border-outline-variant">
+<div class="flex flex-col gap-stack-gap-sm">
+<label class="font-label-lg text-label-lg text-on-surface-variant" for="url-input">Read from Website</label>
+<div class="relative flex items-center">
+<span class="material-symbols-outlined absolute left-3 text-on-surface-variant" data-icon="link">link</span>
+<input class="w-full pl-10 pr-4 py-3 bg-surface-container-lowest border-outline-variant rounded-lg focus:ring-2 focus:ring-primary focus:border-primary border transition-all font-body-md text-body-md outline-none" id="url-input" placeholder="https://example.com/article" type="url"/>
+<button class="absolute right-2 px-4 py-1.5 bg-primary text-on-primary rounded-lg font-label-lg text-label-lg hover:brightness-110 active:scale-95 transition-all">Load</button>
+</div>
+</div>
+</section>
+<!-- Content Area: Hero Card -->
+<article class="space-y-stack-gap-md">
+<div class="relative overflow-hidden rounded-2xl aspect-[16/9] border border-outline-variant group">
+<img class="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" data-alt="A professional studio photograph of a clean, minimalist workspace featuring a high-quality tablet showing text, a pair of elegant wireless headphones, and a warm cup of coffee on a light wood desk. The lighting is soft and natural, emphasizing a calm and focused atmosphere for learning. The color palette is composed of soft blues, whites, and light grays, reflecting a modern corporate aesthetic." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDR4WLtp4IWeMGt9RCwvXPkC8DAoQSkXeY7TZsLEM07m-GLw6sWZW5YzSzgKeSVbDTQDMsRfqk0gyjaLSCXRFg2adsfjY5WYkNu2Rah0scKFIDJpHoJY7nV1vTyOqqNhkG9J9xEFeKg4wBiodKrmLV3jjabwMlieDkZT3RVd7C3nvNTDdKSHgtBAkjG96Whoxz8uSnAkgam1lpdZREYBlxtiBEUPaAqyUAFjvBTGo0tOizY6GIsAhdpHyntPqqnJ_rl7fcfMxuzNPs"/>
+<div class="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent flex items-end p-6">
+<h2 class="text-white font-headline-lg-mobile text-headline-lg-mobile leading-tight">The Future of Continuous Learning in the Professional Space</h2>
+</div>
+</div>
+<!-- Navigation Controls -->
+<div class="flex flex-col sm:flex-row items-center justify-between gap-stack-gap-md bg-surface p-1">
+<div class="flex items-center gap-stack-gap-sm w-full sm:w-auto">
+<button class="flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 py-2 border border-primary text-primary rounded-full hover:bg-primary-container/10 active:scale-95 transition-all font-label-lg text-label-lg">
+<span class="material-symbols-outlined" data-icon="chevron_left">chevron_left</span>
+                            Previous Page
+                        </button>
+<button class="flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 py-2 border border-primary text-primary rounded-full hover:bg-primary-container/10 active:scale-95 transition-all font-label-lg text-label-lg">
+                            Next Page
+                            <span class="material-symbols-outlined" data-icon="chevron_right">chevron_right</span>
+</button>
+</div>
+<div class="w-full sm:w-64">
+<select class="w-full bg-surface-container-low border-outline-variant rounded-lg py-2 pl-3 pr-10 font-body-sm text-body-sm focus:ring-primary focus:border-primary appearance-none cursor-pointer">
+<option>Page 1: Introduction</option>
+<option selected="">Page 2: Executive Summary</option>
+<option>Page 3: Core Methodologies</option>
+<option>Page 4: Case Studies</option>
+<option>Page 5: Conclusion</option>
+</select>
+</div>
+</div>
+<!-- Text Content Preview -->
+<div class="prose prose-slate max-w-none text-on-surface-variant font-body-md text-body-md leading-relaxed space-y-4 pt-4">
+<p>In today's fast-paced environment, the ability to consume information while on the move has become a critical advantage for students and professionals alike. Audio reading technology bridges the gap between static content and a dynamic lifestyle.</p>
+<p>The transition from visual reading to auditory consumption requires a UI that disappears, focusing the user's attention on the narrative flow rather than complex interactions. EchoRead's philosophy centers on this meditative clarity...</p>
+</div>
+</article>
+</div>
+</main>
+<!-- Fixed Bottom Audio Player -->
+<footer class="fixed bottom-0 w-full z-50 h-player-height bg-surface-container-lowest/80 backdrop-blur-md shadow-[0_-4px_12px_rgba(30,41,59,0.08)] flex items-center border-t border-outline-variant/30">
+<div class="max-w-5xl mx-auto w-full px-container-margin flex items-center gap-stack-gap-md">
+<!-- Controls -->
+<div class="flex items-center gap-stack-gap-sm">
+<button class="material-symbols-outlined text-on-surface-variant hover:text-primary transition-all p-2" data-icon="replay_10">replay_10</button>
+<button class="w-12 h-12 bg-primary text-on-primary rounded-full flex items-center justify-center shadow-lg active:scale-90 transition-all duration-200" id="play-pause-btn">
+<span class="material-symbols-outlined text-[32px]" data-icon="play_arrow">play_arrow</span>
+</button>
+<button class="material-symbols-outlined text-on-surface-variant hover:text-primary transition-all p-2" data-icon="forward_30">forward_30</button>
+</div>
+<!-- Progress & Info -->
+<div class="flex-1 flex flex-col gap-1">
+<div class="flex justify-between items-end mb-1">
+<div class="hidden md:block">
+<p class="font-label-lg text-label-lg text-on-surface truncate max-w-[200px]">Executive Summary</p>
+<p class="text-[10px] uppercase tracking-wider text-on-surface-variant font-bold">EchoRead Intelligence</p>
+</div>
+<div class="flex items-center gap-2 text-on-surface-variant font-label-md text-label-md">
+<span id="current-time">04:20</span>
+<span>/</span>
+<span id="total-time">12:45</span>
+</div>
+</div>
+<div class="relative w-full group">
+<input class="w-full cursor-pointer accent-primary" max="100" min="0" type="range" value="34"/>
+</div>
+</div>
+<!-- Options -->
+<div class="hidden sm:flex items-center gap-stack-gap-sm">
+<button class="material-symbols-outlined text-on-surface-variant hover:bg-surface-container-high p-2 rounded-full transition-colors" data-icon="speed">speed</button>
+<button class="material-symbols-outlined text-on-surface-variant hover:bg-surface-container-high p-2 rounded-full transition-colors" data-icon="volume_up">volume_up</button>
+</div>
+</div>
+</footer>
+<!-- Bottom Navigation Shell -->
+<nav class="fixed bottom-0 w-full hidden md:hidden flex justify-around items-center px-4 pb-2 bg-surface-container-lowest/80 backdrop-blur-md h-16 z-[60]">
+<!-- This would appear on mobile if active, currently using Player as primary focus -->
+</nav>
+<script>
+        const playPauseBtn = document.getElementById('play-pause-btn');
+        let isPlaying = false;
+
+        playPauseBtn.addEventListener('click', () => {
+            isPlaying = !isPlaying;
+            const icon = playPauseBtn.querySelector('span');
+            icon.textContent = isPlaying ? 'pause' : 'play_arrow';
+            
+            if(isPlaying) {
+                playPauseBtn.classList.add('bg-primary-container');
+            } else {
+                playPauseBtn.classList.remove('bg-primary-container');
+            }
+        });
+
+        // Simple progress bar interaction simulation
+        const rangeInput = document.querySelector('input[type="range"]');
+        rangeInput.addEventListener('input', (e) => {
+            const value = e.target.value;
+            // logic to update current time label based on percentage
+            const totalSeconds = 12 * 60 + 45;
+            const currentSeconds = Math.floor((value / 100) * totalSeconds);
+            const mins = Math.floor(currentSeconds / 60);
+            const secs = currentSeconds % 60;
+            document.getElementById('current-time').textContent = `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+        });
+    </script>
+</body></html>
