@@ -6,6 +6,7 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../../core/theme/app_theme.dart';
 import '../../data/repositories/favorites_repository.dart';
+import '../../data/repositories/settings_repository.dart';
 import '../../services/novel_extractor.dart';
 import '../../services/work_title_suggester.dart';
 import '../favorites/add_favorite_dialog.dart';
@@ -29,6 +30,7 @@ class ReaderScreen extends StatefulWidget {
 
 class _ReaderScreenState extends State<ReaderScreen> {
   final _favoritesRepository = FavoritesRepository.instance;
+  final _settingsRepository = SettingsRepository.instance;
   final _titleSuggester = WorkTitleSuggester();
   final _extractor = NovelExtractorService();
   final _scrollController = ScrollController();
@@ -38,7 +40,6 @@ class _ReaderScreenState extends State<ReaderScreen> {
 
   late NovelChapter _currentChapter;
 
-  bool _isDarkMode = false;
   ReaderFontSize _fontSize = ReaderFontSize.medium;
   String? _favoriteId;
   bool _isNavigating = false;
@@ -266,7 +267,8 @@ class _ReaderScreenState extends State<ReaderScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final baseTheme = _isDarkMode ? AppTheme.dark() : AppTheme.light();
+    final baseTheme = Theme.of(context);
+    final isDarkMode = baseTheme.brightness == Brightness.dark;
     final bodyStyle = GoogleFonts.inter(
       fontSize: 16 * _fontSize.scale,
       height: 1.7,
@@ -274,9 +276,7 @@ class _ReaderScreenState extends State<ReaderScreen> {
     );
     final hintColor = baseTheme.colorScheme.primary;
 
-    return Theme(
-      data: baseTheme,
-      child: Scaffold(
+    return Scaffold(
         appBar: AppBar(
           leading: IconButton(
             icon: const Icon(Icons.arrow_back),
@@ -298,9 +298,10 @@ class _ReaderScreenState extends State<ReaderScreen> {
               ),
             ),
             IconButton(
-              tooltip: _isDarkMode ? 'Mode clair' : 'Mode sombre',
-              onPressed: () => setState(() => _isDarkMode = !_isDarkMode),
-              icon: Icon(_isDarkMode ? Icons.light_mode : Icons.dark_mode),
+              tooltip: isDarkMode ? 'Mode clair' : 'Mode sombre',
+              onPressed: () =>
+                  _settingsRepository.setDarkMode(!isDarkMode),
+              icon: Icon(isDarkMode ? Icons.light_mode : Icons.dark_mode),
             ),
             IconButton(
               tooltip: 'Ouvrir la source',
@@ -388,7 +389,6 @@ class _ReaderScreenState extends State<ReaderScreen> {
               ),
           ],
         ),
-      ),
-    );
+      );
   }
 }

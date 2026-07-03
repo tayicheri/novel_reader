@@ -5,6 +5,7 @@ import 'package:tayi_whisper/app.dart';
 import 'package:tayi_whisper/core/hive_boxes.dart';
 import 'package:tayi_whisper/data/models/favorite_work.dart';
 import 'package:tayi_whisper/data/repositories/favorites_repository.dart';
+import 'package:tayi_whisper/data/repositories/settings_repository.dart';
 
 void main() {
   setUp(() async {
@@ -18,7 +19,13 @@ void main() {
     } else {
       await Hive.openBox<FavoriteWork>(HiveBoxes.favorites);
     }
+    if (Hive.isBoxOpen(HiveBoxes.settings)) {
+      await Hive.box(HiveBoxes.settings).clear();
+    } else {
+      await Hive.openBox(HiveBoxes.settings);
+    }
     FavoritesRepository.instance.init();
+    SettingsRepository.instance.init();
   });
 
   testWidgets('Tayi Whisper home screen renders', (WidgetTester tester) async {

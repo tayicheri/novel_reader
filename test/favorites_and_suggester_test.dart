@@ -3,6 +3,7 @@ import 'package:hive/hive.dart';
 
 import 'package:tayi_whisper/data/models/favorite_work.dart';
 import 'package:tayi_whisper/data/repositories/favorites_repository.dart';
+import 'package:tayi_whisper/data/repositories/settings_repository.dart';
 import 'package:tayi_whisper/services/work_title_suggester.dart';
 
 void main() {
@@ -97,6 +98,34 @@ void main() {
 
       await repository.delete(favorite.id);
       expect(repository.getById(favorite.id), isNull);
+    });
+  });
+
+  group('SettingsRepository', () {
+    late Box settingsBox;
+    late SettingsRepository repository;
+
+    setUp(() async {
+      Hive.init('./.dart_tool/test_settings_hive');
+      settingsBox = await Hive.openBox('settings_test');
+      await settingsBox.clear();
+      repository = SettingsRepository.instance;
+      repository.init(box: settingsBox);
+    });
+
+    tearDown(() async {
+      await settingsBox.clear();
+      await settingsBox.close();
+    });
+
+    test('persiste le mode sombre', () async {
+      expect(repository.isDarkMode.value, isFalse);
+
+      await repository.setDarkMode(true);
+      expect(repository.isDarkMode.value, isTrue);
+
+      repository.init(box: settingsBox);
+      expect(repository.isDarkMode.value, isTrue);
     });
   });
 }
