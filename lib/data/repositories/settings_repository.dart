@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 
 import '../../core/hive_boxes.dart';
+import '../../core/tts_language_options.dart';
 
 enum TtsEngine { native, cloud }
 
@@ -13,6 +14,7 @@ class SettingsRepository {
 
   static const String _isDarkModeKey = 'isDarkMode';
   static const String _ttsEngineKey = 'ttsEngine';
+  static const String _ttsLanguageKey = 'ttsLanguage';
   static const String _cloudTtsApiKeyKey = 'cloudTtsApiKey';
 
   Box? _box;
@@ -50,6 +52,18 @@ class SettingsRepository {
 
   Future<void> setTtsEngine(TtsEngine value) async {
     await box.put(_ttsEngineKey, value.name);
+  }
+
+  String get ttsLanguage {
+    final value = box.get(_ttsLanguageKey);
+    if (value is String) {
+      return normalizeTtsLanguageCode(value);
+    }
+    return defaultTtsLanguageCode;
+  }
+
+  Future<void> setTtsLanguage(String value) async {
+    await box.put(_ttsLanguageKey, normalizeTtsLanguageCode(value));
   }
 
   String? get cloudTtsApiKey {

@@ -36,9 +36,13 @@ class TtsSynthesisService implements ChapterAudioSynthesis {
     CloudTtsProvider Function(String apiKey)? cloudProviderFactory,
   })  : _settings = settings ?? SettingsRepository.instance,
         _audioCache = audioCache ?? AudioCacheRepository.instance,
-        _nativeProvider = nativeProvider ?? NativeTtsProvider(),
-        _cloudProviderFactory =
-            cloudProviderFactory ?? ((apiKey) => CloudTtsProvider(apiKey: apiKey));
+        _nativeProvider = nativeProvider ??
+            NativeTtsProvider(
+              languageCode: () =>
+                  (settings ?? SettingsRepository.instance).ttsLanguage,
+            ),
+        _cloudProviderFactory = cloudProviderFactory ??
+            ((apiKey) => CloudTtsProvider(apiKey: apiKey));
 
   final SettingsRepository _settings;
   final AudioCacheRepository _audioCache;

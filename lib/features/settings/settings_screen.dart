@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../core/tts_language_options.dart';
 import '../../data/repositories/settings_repository.dart';
 
 class SettingsScreen extends StatefulWidget {
@@ -14,11 +15,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
   final _apiKeyController = TextEditingController();
 
   late TtsEngine _ttsEngine;
+  late String _ttsLanguage;
 
   @override
   void initState() {
     super.initState();
     _ttsEngine = _settings.ttsEngine;
+    _ttsLanguage = _settings.ttsLanguage;
     _apiKeyController.text = _settings.cloudTtsApiKey ?? '';
   }
 
@@ -31,6 +34,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
   Future<void> _saveTtsEngine(TtsEngine engine) async {
     await _settings.setTtsEngine(engine);
     setState(() => _ttsEngine = engine);
+  }
+
+  Future<void> _saveTtsLanguage(String? languageCode) async {
+    if (languageCode == null) return;
+    await _settings.setTtsLanguage(languageCode);
+    setState(() => _ttsLanguage = languageCode);
   }
 
   Future<void> _saveApiKey() async {
@@ -74,6 +83,36 @@ class _SettingsScreenState extends State<SettingsScreen> {
           const SizedBox(height: 12),
           Text(
             'Hors-ligne : TTS natif automatiquement.',
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: theme.colorScheme.onSurfaceVariant,
+            ),
+          ),
+          const SizedBox(height: 24),
+          Text(
+            'Langue de lecture',
+            style: theme.textTheme.titleSmall,
+          ),
+          const SizedBox(height: 8),
+          DropdownButtonFormField<String>(
+            value: _ttsLanguage,
+            decoration: const InputDecoration(
+              labelText: 'Langue TTS',
+              border: OutlineInputBorder(),
+            ),
+            items: [
+              for (final option in ttsLanguageOptions)
+                DropdownMenuItem(
+                  value: option.code,
+                  child: Text(option.label),
+                ),
+            ],
+            onChanged: _saveTtsLanguage,
+          ),
+          const SizedBox(height: 8),
+          Text(
+            _ttsEngine == TtsEngine.cloud
+                ? 'TTS cloud : la langue suit le texte. Ce réglage s’applique au TTS natif (hors-ligne).'
+                : 'Utilisée pour la synthèse vocale native.',
             style: theme.textTheme.bodySmall?.copyWith(
               color: theme.colorScheme.onSurfaceVariant,
             ),

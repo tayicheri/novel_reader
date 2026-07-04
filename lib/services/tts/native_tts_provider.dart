@@ -6,18 +6,29 @@ import 'text_chunker.dart';
 import 'tts_provider.dart';
 
 class NativeTtsProvider implements TtsProvider {
-  NativeTtsProvider({FlutterTts? tts}) : _tts = tts ?? FlutterTts();
+  NativeTtsProvider({
+    FlutterTts? tts,
+    String Function()? languageCode,
+  })  : _tts = tts ?? FlutterTts(),
+        _languageCode = languageCode ?? (() => 'en-US');
 
   final FlutterTts _tts;
-  bool _configured = false;
+  final String Function() _languageCode;
+  bool _awaitSynthConfigured = false;
+  String? _appliedLanguage;
 
   Future<void> _ensureConfigured() async {
-    if (_configured) return;
+    final language = _languageCode();
+    if (_appliedLanguage != language) {
+      await _tts.setLanguage(language);
+      _appliedLanguage = language;
+    }
+    if (_awaitSynthConfigured) return;
     // awaitSpeakCompletion(true) before synthesizeToFile crashes iOS (flutter_tts #290).
     if (Platform.isIOS || Platform.isAndroid) {
       await _tts.awaitSynthCompletion(true);
     }
-    _configured = true;
+    _awaitSynthConfigured = true;
   }
 
   @override
