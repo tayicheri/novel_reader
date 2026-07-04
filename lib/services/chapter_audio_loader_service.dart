@@ -3,6 +3,7 @@ import 'dart:async';
 import '../core/cache_policy.dart';
 import '../data/models/cached_audio.dart';
 import '../data/repositories/audio_cache_repository.dart';
+import '../data/repositories/audio_progress_repository.dart';
 import '../data/repositories/pages_cache_repository.dart';
 import '../data/repositories/settings_repository.dart';
 import 'chapter_loader_service.dart';
@@ -51,6 +52,12 @@ class ChapterAudioLoaderService {
   /// Supprime l'audio en cache (fichiers invalides ou format obsolète).
   Future<void> invalidateCachedAudio(NovelChapter chapter) {
     return _audioCache.delete(chapter.sourceUrl);
+  }
+
+  /// Efface le cache, la position de lecture et relance une synthèse propre.
+  Future<void> reloadChapterAudio(NovelChapter chapter) async {
+    await _synthesis.invalidateForReload(chapter.sourceUrl);
+    await AudioProgressRepository.instance.delete(chapter.sourceUrl);
   }
 
   void onChapterDisplayed(NovelChapter chapter) {

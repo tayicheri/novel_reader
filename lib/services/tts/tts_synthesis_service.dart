@@ -21,6 +21,9 @@ abstract class ChapterAudioSynthesis {
     required int durationMs,
   });
 
+  /// Supprime le cache et annule une synthèse en cours pour ce chapitre.
+  Future<void> invalidateForReload(String sourceUrl);
+
   @Deprecated('Use createSession + progressive playback')
   Future<CachedAudio> synthesize({
     required String sourceUrl,
@@ -116,6 +119,14 @@ class TtsSynthesisService implements ChapterAudioSynthesis {
     );
     await _audioCache.put(cached);
     return cached;
+  }
+
+  @override
+  Future<void> invalidateForReload(String sourceUrl) async {
+    final engine = await _settings.resolveEffectiveEngine();
+    final key = AudioCacheKey.build(_audioCache.normalizeUrl(sourceUrl), engine);
+    _inFlightSessions.remove(key);
+    await _audioCache.delete(sourceUrl);
   }
 
   @override

@@ -74,6 +74,11 @@ class _FakeSynthesis implements ChapterAudioSynthesis {
   }
 
   @override
+  Future<void> invalidateForReload(String sourceUrl) async {
+    await _audioCache.delete(sourceUrl);
+  }
+
+  @override
   Future<CachedAudio> synthesize({
     required String sourceUrl,
     required String text,

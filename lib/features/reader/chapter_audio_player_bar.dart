@@ -194,6 +194,24 @@ class ChapterAudioPlayerBarState extends State<ChapterAudioPlayerBar> {
     return (widget.chapter.content.length / 14 * 1000).round();
   }
 
+  Future<void> _reloadAudio() async {
+    if (_uiState == AudioPlayerUiState.preparing) return;
+
+    await widget.playback.stop();
+    await widget.audioLoader.reloadChapterAudio(widget.chapter);
+
+    if (!mounted) return;
+    setState(() {
+      _cachedAudio = null;
+      _activeSession = null;
+      _errorMessage = null;
+      _position = Duration.zero;
+      _duration = Duration.zero;
+    });
+
+    await _startPlayback();
+  }
+
   Future<void> _togglePlayback() async {
     if (_uiState == AudioPlayerUiState.idle ||
         _uiState == AudioPlayerUiState.ready ||
@@ -231,6 +249,16 @@ class ChapterAudioPlayerBarState extends State<ChapterAudioPlayerBar> {
   bool get _canPlay =>
       _uiState != AudioPlayerUiState.preparing &&
       _uiState != AudioPlayerUiState.error;
+
+  bool get _canReload => _uiState != AudioPlayerUiState.preparing;
+
+  Widget _reloadButton() {
+    return IconButton(
+      tooltip: 'Régénérer l\'audio',
+      onPressed: _canReload ? _reloadAudio : null,
+      icon: const Icon(Icons.refresh),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -277,6 +305,7 @@ class ChapterAudioPlayerBarState extends State<ChapterAudioPlayerBar> {
                         ),
                       ),
                     ),
+                    _reloadButton(),
                     TextButton(
                       onPressed: _startPlayback,
                       child: const Text('Réessayer'),
@@ -336,6 +365,7 @@ class ChapterAudioPlayerBarState extends State<ChapterAudioPlayerBar> {
                         ],
                       ),
                     ),
+                    _reloadButton(),
                   ],
                 ),
             ],
