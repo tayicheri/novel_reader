@@ -101,11 +101,11 @@ class FlutterTtsPlugin {
     }.toJS;
 
     utterance.onBoundary = (JSObject event) {
-      int charIndex = event['charIndex'] as int;
-      String name = event['name'] as String;
+      final charIndex = (event['charIndex'] as JSNumber).toDartInt;
+      final name = (event['name'] as JSString).toDart;
       if (name == 'sentence') return;
-      String text = utterance['text'] as String;
-      int endIndex = charIndex;
+      final text = utterance.text;
+      var endIndex = charIndex;
       while (endIndex < text.length &&
           !RegExp(r'[\s,.!?]').hasMatch(text[endIndex])) {
         endIndex++;

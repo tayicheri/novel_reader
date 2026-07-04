@@ -94,7 +94,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ),
           const SizedBox(height: 8),
           DropdownButtonFormField<String>(
-            value: _ttsLanguage,
+            key: ValueKey(_ttsLanguage),
+            initialValue: _ttsLanguage,
             decoration: const InputDecoration(
               labelText: 'Langue TTS',
               border: OutlineInputBorder(),

@@ -12,7 +12,6 @@ class AudioPlaybackService {
   final AudioProgressRepository _progress;
 
   String? _currentUrl;
-  ConcatenatingAudioSource? _playlist;
   bool _appendCancelled = false;
 
   Stream<Duration> get positionStream => _player.positionStream;
@@ -57,10 +56,7 @@ class AudioPlaybackService {
     _currentUrl = sourceUrl;
     _appendCancelled = false;
 
-    _playlist = ConcatenatingAudioSource(
-      children: [AudioSource.file(firstSegmentPath)],
-    );
-    await _player.setAudioSource(_playlist!);
+    await _player.setAudioSources([AudioSource.file(firstSegmentPath)]);
 
     final savedMs = _progress.getPosition(sourceUrl);
     if (savedMs > 0) {
@@ -83,14 +79,13 @@ class AudioPlaybackService {
         }
         break;
       }
-      if (_appendCancelled || _playlist == null) break;
-      await _playlist!.add(AudioSource.file(path));
+      if (_appendCancelled) break;
+      await _player.addAudioSource(AudioSource.file(path));
     }
   }
 
   void _cancelAppend() {
     _appendCancelled = true;
-    _playlist = null;
   }
 
   Future<void> pause() async {
