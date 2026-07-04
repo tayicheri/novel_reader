@@ -3,7 +3,6 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:just_audio/just_audio.dart';
 
-import '../../data/models/cached_audio.dart';
 import '../../services/audio_playback_service.dart';
 import '../../services/chapter_audio_loader_service.dart';
 import '../../services/novel_extractor.dart';
@@ -30,7 +29,6 @@ class ChapterAudioPlayerBar extends StatefulWidget {
 
 class ChapterAudioPlayerBarState extends State<ChapterAudioPlayerBar> {
   AudioPlayerUiState _uiState = AudioPlayerUiState.idle;
-  CachedAudio? _cachedAudio;
   ProgressiveAudioSession? _activeSession;
   String? _errorMessage;
 
@@ -91,7 +89,6 @@ class ChapterAudioPlayerBarState extends State<ChapterAudioPlayerBar> {
     await widget.playback.stop();
     setState(() {
       _uiState = AudioPlayerUiState.idle;
-      _cachedAudio = null;
       _activeSession = null;
       _errorMessage = null;
       _position = Duration.zero;
@@ -106,7 +103,6 @@ class ChapterAudioPlayerBarState extends State<ChapterAudioPlayerBar> {
       if (!mounted) return;
       if (cached != null) {
         setState(() {
-          _cachedAudio = cached;
           _uiState = AudioPlayerUiState.ready;
           _duration = Duration(milliseconds: cached.durationMs);
         });
@@ -125,11 +121,10 @@ class ChapterAudioPlayerBarState extends State<ChapterAudioPlayerBar> {
     });
 
     try {
-      final cached = _cachedAudio ?? await widget.audioLoader.getCachedAudio(widget.chapter);
+      final cached = await widget.audioLoader.getCachedAudio(widget.chapter);
       if (!mounted) return;
 
       if (cached != null) {
-        _cachedAudio = cached;
         try {
           await widget.playback.play(
             sourceUrl: widget.chapter.sourceUrl,
@@ -143,7 +138,6 @@ class ChapterAudioPlayerBarState extends State<ChapterAudioPlayerBar> {
           return;
         } on PlayerException {
           await widget.audioLoader.invalidateCachedAudio(widget.chapter);
-          _cachedAudio = null;
         }
       }
 
@@ -177,12 +171,12 @@ class ChapterAudioPlayerBarState extends State<ChapterAudioPlayerBar> {
       onAllSegmentsLoaded: () async {
         if (!mounted || _activeSession == null) return;
         final durationMs = widget.playback.totalDuration.inMilliseconds;
-        final saved = await widget.audioLoader.savePlaybackSession(
+        await widget.audioLoader.savePlaybackSession(
           session,
           durationMs: durationMs > 0 ? durationMs : _estimateDurationMs(),
         );
         if (!mounted) return;
-        setState(() => _cachedAudio = saved);
+        setState(() => _uiState = AudioPlayerUiState.playing);
       },
     );
 
@@ -202,7 +196,6 @@ class ChapterAudioPlayerBarState extends State<ChapterAudioPlayerBar> {
 
     if (!mounted) return;
     setState(() {
-      _cachedAudio = null;
       _activeSession = null;
       _errorMessage = null;
       _position = Duration.zero;

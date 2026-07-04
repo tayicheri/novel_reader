@@ -3,6 +3,7 @@ import 'package:hive/hive.dart';
 
 import 'package:tayi_whisper/data/models/favorite_work.dart';
 import 'package:tayi_whisper/data/repositories/favorites_repository.dart';
+import 'package:tayi_whisper/core/cloud_narration_styles.dart';
 import 'package:tayi_whisper/data/repositories/settings_repository.dart';
 import 'package:tayi_whisper/services/work_title_suggester.dart';
 
@@ -130,13 +131,49 @@ void main() {
 
     test('persiste le moteur TTS', () async {
       expect(repository.ttsEngine, TtsEngine.native);
+      expect(repository.cloudTtsProvider, CloudTtsProvider.gemini);
 
       await repository.setTtsEngine(TtsEngine.cloud);
-      await repository.setCloudTtsApiKey('sk-test');
+      await repository.setCloudTtsProvider(CloudTtsProvider.openai);
+      await repository.setOpenaiApiKey('sk-test');
 
       repository.init(box: settingsBox);
       expect(repository.ttsEngine, TtsEngine.cloud);
+      expect(repository.cloudTtsProvider, CloudTtsProvider.openai);
+      expect(repository.openaiApiKey, 'sk-test');
       expect(repository.cloudTtsApiKey, 'sk-test');
+    });
+
+    test('migre cloudTtsApiKey vers openaiApiKey', () async {
+      await settingsBox.put('cloudTtsApiKey', 'sk-legacy');
+
+      repository.init(box: settingsBox);
+
+      expect(repository.openaiApiKey, 'sk-legacy');
+      expect(settingsBox.get('cloudTtsApiKey'), isNull);
+    });
+
+    test('persiste voix et style de narration cloud', () async {
+      expect(repository.voiceForCloudProvider(CloudTtsProvider.gemini), 'Kore');
+      expect(repository.voiceForCloudProvider(CloudTtsProvider.openai), 'marin');
+      expect(repository.cloudNarrationStyle, CloudNarrationStyle.audiobook);
+
+      await repository.setVoiceForCloudProvider(CloudTtsProvider.gemini, 'Charon');
+      await repository.setVoiceForCloudProvider(CloudTtsProvider.openai, 'nova');
+      await repository.setCloudNarrationStyle(CloudNarrationStyle.dramatic);
+
+      repository.init(box: settingsBox);
+      expect(repository.voiceForCloudProvider(CloudTtsProvider.gemini), 'Charon');
+      expect(repository.voiceForCloudProvider(CloudTtsProvider.openai), 'nova');
+      expect(repository.cloudNarrationStyle, CloudNarrationStyle.dramatic);
+    });
+
+    test('utilise cloud quand configuré avec clé API', () async {
+      await repository.setTtsEngine(TtsEngine.cloud);
+      await repository.setCloudTtsProvider(CloudTtsProvider.gemini);
+      await repository.setGeminiApiKey('test-key');
+
+      expect(await repository.resolveEffectiveEngine(), TtsEngine.cloud);
     });
   });
 }

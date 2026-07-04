@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import '../../core/cloud_narration_styles.dart';
 import '../../data/repositories/settings_repository.dart';
 import 'text_chunker.dart';
 import 'tts_provider.dart';
@@ -14,10 +15,16 @@ class ProgressiveAudioSession {
     required this.chunks,
     required this.provider,
     required this.segmentExtension,
+    this.cloudProvider,
+    this.cloudVoice,
+    this.narrationStyle,
   });
 
   final String sourceUrl;
   final TtsEngine engine;
+  final CloudTtsProvider? cloudProvider;
+  final String? cloudVoice;
+  final CloudNarrationStyle? narrationStyle;
   final String outputDir;
   final String baseName;
   final List<String> chunks;
@@ -44,8 +51,14 @@ class ProgressiveAudioSession {
   }
 }
 
-String segmentExtensionFor(TtsEngine engine) {
-  if (engine == TtsEngine.cloud) return 'mp3';
+String segmentExtensionFor(
+  TtsEngine engine, {
+  CloudTtsProvider? cloudProvider,
+}) {
+  if (engine == TtsEngine.cloud) {
+    if (cloudProvider == CloudTtsProvider.gemini) return 'wav';
+    return 'mp3';
+  }
   if (Platform.isIOS || Platform.isMacOS) return 'caf';
   return 'wav';
 }

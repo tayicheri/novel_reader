@@ -3,16 +3,24 @@ import 'dart:io';
 
 import 'package:http/http.dart' as http;
 
-import 'text_chunker.dart';
-import 'tts_provider.dart';
+import '../../../core/cloud_narration_styles.dart';
+import '../text_chunker.dart';
+import '../tts_provider.dart';
+import 'cloud_narration_prompt.dart';
 
-class CloudTtsProvider implements TtsProvider {
-  CloudTtsProvider({
+class OpenAiTtsProvider implements TtsProvider {
+  OpenAiTtsProvider({
     required this.apiKey,
+    required this.voice,
+    required this.narrationStyle,
     http.Client? client,
   }) : _client = client ?? http.Client();
 
+  static const _model = 'gpt-4o-mini-tts';
+
   final String apiKey;
+  final String voice;
+  final CloudNarrationStyle narrationStyle;
   final http.Client _client;
 
   @override
@@ -27,16 +35,17 @@ class CloudTtsProvider implements TtsProvider {
         'Content-Type': 'application/json',
       },
       body: jsonEncode({
-        'model': 'tts-1',
+        'model': _model,
         'input': text,
-        'voice': 'alloy',
+        'voice': voice,
+        'instructions': CloudNarrationPrompt.openAiInstructions(narrationStyle),
         'response_format': 'mp3',
       }),
     );
 
     if (response.statusCode < 200 || response.statusCode >= 300) {
       throw TtsSynthesisException(
-        'Échec TTS cloud (code ${response.statusCode}).',
+        'Échec TTS OpenAI (code ${response.statusCode}).',
       );
     }
 

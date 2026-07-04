@@ -83,8 +83,18 @@ class ChapterAudioLoaderService {
     var depth = 1;
 
     while (url != null) {
-      if (!_audioCache.contains(url, TtsEngine.native) &&
-          !_audioCache.contains(url, TtsEngine.cloud)) {
+      final hasNative = _audioCache.contains(url, TtsEngine.native);
+      final hasCloudGemini = _audioCache.contains(
+        url,
+        TtsEngine.cloud,
+        cloudProvider: CloudTtsProvider.gemini,
+      );
+      final hasCloudOpenAi = _audioCache.contains(
+        url,
+        TtsEngine.cloud,
+        cloudProvider: CloudTtsProvider.openai,
+      );
+      if (!hasNative && !hasCloudGemini && !hasCloudOpenAi) {
         break;
       }
 
