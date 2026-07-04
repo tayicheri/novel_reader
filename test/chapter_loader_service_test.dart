@@ -107,7 +107,7 @@ void main() {
       expect(extractor.callCount, 0);
     });
 
-    test('prefetchNext parcourt 10 liens et saute le cache existant', () async {
+    test('prefetchNext parcourt 1 lien et saute le cache existant', () async {
       await cache.put(_chapter(url: '$base/ch-1', nextUrl: '$base/ch-2'));
       await cache.put(_chapter(url: '$base/ch-2', nextUrl: '$base/ch-3'));
 
@@ -117,13 +117,11 @@ void main() {
 
       expect(cache.contains('$base/ch-1'), isTrue);
       expect(cache.contains('$base/ch-2'), isTrue);
-      expect(cache.contains('$base/ch-3'), isTrue);
-      expect(cache.contains('$base/ch-11'), isTrue);
-      expect(cache.contains('$base/ch-12'), isFalse);
-      expect(extractor.callCount, 9);
+      expect(cache.contains('$base/ch-3'), isFalse);
+      expect(extractor.callCount, 0);
     });
 
-    test('evictBehind conserve 5 chapitres et supprime au-delà', () async {
+    test('evictBehind conserve 3 chapitres et supprime au-delà', () async {
       for (var i = 1; i <= 8; i++) {
         await cache.put(
           _chapter(
@@ -143,10 +141,9 @@ void main() {
 
       expect(cache.contains('$base/back-8'), isTrue);
       expect(cache.contains('$base/back-7'), isTrue);
-      expect(cache.contains('$base/back-4'), isTrue);
-      expect(cache.contains('$base/back-3'), isFalse);
-      expect(cache.contains('$base/back-2'), isFalse);
-      expect(cache.contains('$base/back-1'), isFalse);
+      expect(cache.contains('$base/back-6'), isTrue);
+      expect(cache.contains('$base/back-5'), isFalse);
+      expect(cache.contains('$base/back-4'), isFalse);
     });
 
     test('evictBehind ne fait rien si rien derrière en cache', () async {

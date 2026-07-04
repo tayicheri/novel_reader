@@ -1,13 +1,11 @@
 import 'dart:async';
 
+import '../core/cache_policy.dart';
 import '../data/repositories/pages_cache_repository.dart';
 import 'novel_extractor.dart';
 
 class ChapterLoaderService {
   ChapterLoaderService({NovelExtractorService? extractor, PagesCacheRepository? cache}) : _extractor = extractor ?? NovelExtractorService(), _cache = cache ?? PagesCacheRepository.instance;
-
-  static const int prefetchAheadCount = 10;
-  static const int keepBehindCount = 5;
 
   static final ChapterLoaderService instance = ChapterLoaderService();
 
@@ -16,10 +14,12 @@ class ChapterLoaderService {
   final Map<String, Future<NovelChapter>> _inFlight = {};
 
   Future<NovelChapter> loadChapter(String rawUrl) async {
-    final chapter = await _resolveChapter(rawUrl);
+    final chapter = await resolveChapter(rawUrl);
     onChapterDisplayed(chapter);
     return chapter;
   }
+
+  Future<NovelChapter> resolveChapter(String rawUrl) => _resolveChapter(rawUrl);
 
   void onChapterDisplayed(NovelChapter chapter) {
     unawaited(prefetchNext(chapter));
@@ -30,7 +30,7 @@ class ChapterLoaderService {
     var url = current.nextUrl;
     var linksVisited = 0;
 
-    while (url != null && linksVisited < prefetchAheadCount) {
+    while (url != null && linksVisited < CachePolicy.prefetchAheadCount) {
       linksVisited++;
 
       try {
@@ -56,7 +56,7 @@ class ChapterLoaderService {
       if (!_cache.contains(url)) break;
 
       final cached = _cache.get(url)!;
-      if (depth > keepBehindCount) {
+      if (depth > CachePolicy.keepBehindCount) {
         await _cache.delete(url);
       }
       url = cached.previousUrl;

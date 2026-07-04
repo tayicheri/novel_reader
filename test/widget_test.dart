@@ -3,8 +3,11 @@ import 'package:hive/hive.dart';
 
 import 'package:tayi_whisper/app.dart';
 import 'package:tayi_whisper/core/hive_boxes.dart';
+import 'package:tayi_whisper/data/models/cached_audio.dart';
 import 'package:tayi_whisper/data/models/cached_chapter.dart';
 import 'package:tayi_whisper/data/models/favorite_work.dart';
+import 'package:tayi_whisper/data/repositories/audio_cache_repository.dart';
+import 'package:tayi_whisper/data/repositories/audio_progress_repository.dart';
 import 'package:tayi_whisper/data/repositories/favorites_repository.dart';
 import 'package:tayi_whisper/data/repositories/pages_cache_repository.dart';
 import 'package:tayi_whisper/data/repositories/settings_repository.dart';
@@ -18,6 +21,9 @@ void main() {
     }
     if (!Hive.isAdapterRegistered(1)) {
       Hive.registerAdapter(CachedChapterAdapter());
+    }
+    if (!Hive.isAdapterRegistered(2)) {
+      Hive.registerAdapter(CachedAudioAdapter());
     }
     if (Hive.isBoxOpen(HiveBoxes.favorites)) {
       await Hive.box<FavoriteWork>(HiveBoxes.favorites).clear();
@@ -34,9 +40,21 @@ void main() {
     } else {
       await Hive.openBox<CachedChapter>(HiveBoxes.pages);
     }
+    if (Hive.isBoxOpen(HiveBoxes.audioCache)) {
+      await Hive.box<CachedAudio>(HiveBoxes.audioCache).clear();
+    } else {
+      await Hive.openBox<CachedAudio>(HiveBoxes.audioCache);
+    }
+    if (Hive.isBoxOpen(HiveBoxes.audioProgress)) {
+      await Hive.box(HiveBoxes.audioProgress).clear();
+    } else {
+      await Hive.openBox(HiveBoxes.audioProgress);
+    }
     FavoritesRepository.instance.init();
     SettingsRepository.instance.init();
     PagesCacheRepository.instance.init();
+    AudioCacheRepository.instance.init();
+    AudioProgressRepository.instance.init();
   });
 
   testWidgets('Tayi Whisper home screen renders', (WidgetTester tester) async {

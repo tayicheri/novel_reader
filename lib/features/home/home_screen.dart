@@ -8,6 +8,7 @@ import '../../services/chapter_loader_service.dart';
 import '../../services/novel_extractor.dart';
 import '../favorites/favorite_card.dart';
 import '../reader/reader_screen.dart';
+import '../settings/settings_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -110,6 +111,19 @@ class _HomeScreenState extends State<HomeScreen> {
             Text(AppConstants.appName),
           ],
         ),
+        actions: [
+          IconButton(
+            tooltip: 'Réglages',
+            icon: const Icon(Icons.settings),
+            onPressed: () {
+              Navigator.of(context).push(
+                MaterialPageRoute<void>(
+                  builder: (_) => const SettingsScreen(),
+                ),
+              );
+            },
+          ),
+        ],
       ),
       body: SafeArea(
         child: SingleChildScrollView(

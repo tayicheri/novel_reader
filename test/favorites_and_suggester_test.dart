@@ -127,5 +127,16 @@ void main() {
       repository.init(box: settingsBox);
       expect(repository.isDarkMode.value, isTrue);
     });
+
+    test('persiste le moteur TTS', () async {
+      expect(repository.ttsEngine, TtsEngine.native);
+
+      await repository.setTtsEngine(TtsEngine.cloud);
+      await repository.setCloudTtsApiKey('sk-test');
+
+      repository.init(box: settingsBox);
+      expect(repository.ttsEngine, TtsEngine.cloud);
+      expect(repository.cloudTtsApiKey, 'sk-test');
+    });
   });
 }

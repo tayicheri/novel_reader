@@ -7,10 +7,13 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../core/theme/app_theme.dart';
 import '../../data/repositories/favorites_repository.dart';
 import '../../data/repositories/settings_repository.dart';
+import '../../services/audio_playback_service.dart';
+import '../../services/chapter_audio_loader_service.dart';
 import '../../services/chapter_loader_service.dart';
 import '../../services/novel_extractor.dart';
 import '../../services/work_title_suggester.dart';
 import '../favorites/add_favorite_dialog.dart';
+import 'chapter_audio_player_bar.dart';
 import 'chapter_swipe_hints.dart';
 
 class ReaderScreen extends StatefulWidget {
@@ -34,6 +37,8 @@ class _ReaderScreenState extends State<ReaderScreen> {
   final _settingsRepository = SettingsRepository.instance;
   final _titleSuggester = WorkTitleSuggester();
   final _chapterLoader = ChapterLoaderService.instance;
+  final _audioLoader = ChapterAudioLoaderService.instance;
+  final _audioPlayback = AudioPlaybackService();
   final _scrollController = ScrollController();
 
   static const _swipeDistanceThreshold = 80.0;
@@ -59,6 +64,7 @@ class _ReaderScreenState extends State<ReaderScreen> {
     _scheduleIdleHints();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _chapterLoader.onChapterDisplayed(_currentChapter);
+      _audioLoader.onChapterDisplayed(_currentChapter);
       if (!mounted || widget.initialScrollOffset <= 0) return;
       if (_scrollController.hasClients) {
         _scrollController.jumpTo(
@@ -76,6 +82,7 @@ class _ReaderScreenState extends State<ReaderScreen> {
     _saveDebounce?.cancel();
     _idleTimer?.cancel();
     _persistProgress();
+    _audioPlayback.dispose();
     _scrollController
       ..removeListener(_onScroll)
       ..dispose();
@@ -169,6 +176,7 @@ class _ReaderScreenState extends State<ReaderScreen> {
 
   Future<void> _navigateTo(String url) async {
     await _persistProgress();
+    await _audioPlayback.stop();
     if (!mounted) return;
 
     setState(() {
@@ -379,6 +387,12 @@ class _ReaderScreenState extends State<ReaderScreen> {
                       ],
                     ),
                   ),
+                ),
+                ChapterAudioPlayerBar(
+                  key: ValueKey(_currentChapter.sourceUrl),
+                  chapter: _currentChapter,
+                  playback: _audioPlayback,
+                  audioLoader: _audioLoader,
                 ),
               ],
             ),
