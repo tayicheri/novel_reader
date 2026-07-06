@@ -2,7 +2,12 @@ import 'package:html/dom.dart' as dom;
 import 'package:html/parser.dart' as html_parser;
 import 'package:http/http.dart' as http;
 
+import '../core/cloudflare_detector.dart';
 import '../core/constants.dart';
+import '../core/novel_extraction_exception.dart';
+import 'web_chapter_fetcher.dart';
+
+export '../core/novel_extraction_exception.dart';
 
 class NovelChapter {
   const NovelChapter({
@@ -156,15 +161,6 @@ class ChapterNavigationParser {
   }
 }
 
-class NovelExtractionException implements Exception {
-  NovelExtractionException(this.message);
-
-  final String message;
-
-  @override
-  String toString() => message;
-}
-
 Uri normalizeNovelUrl(String rawUrl) {
   final trimmed = rawUrl.trim();
   if (trimmed.isEmpty) {
@@ -187,18 +183,35 @@ class NovelExtractorService {
 
   Future<NovelChapter> extract(String rawUrl) async {
     final url = normalizeNovelUrl(rawUrl);
+    final html = await _fetchPageHtml(url);
+    return _parseChapter(url, html);
+  }
+
+  Future<String> _fetchPageHtml(Uri url) async {
     final response = await http.get(
       url,
       headers: AppConstants.novelPageRequestHeaders,
     );
 
-    if (response.statusCode < 200 || response.statusCode >= 300) {
-      throw NovelExtractionException(
-        'Impossible de charger la page (code ${response.statusCode}).',
-      );
+    final isCloudflare = isCloudflareChallengePage(response.body);
+
+    if (response.statusCode >= 200 &&
+        response.statusCode < 300 &&
+        !isCloudflare) {
+      return response.body;
     }
 
-    final document = html_parser.parse(response.body);
+    if (isCloudflare || response.statusCode == 403) {
+      return WebChapterFetcher.fetchHtml(url);
+    }
+
+    throw NovelExtractionException(
+      'Impossible de charger la page (code ${response.statusCode}).',
+    );
+  }
+
+  NovelChapter _parseChapter(Uri url, String html) {
+    final document = html_parser.parse(html);
     final title = _extractTitle(document) ?? 'Sans titre';
     final content = _extractContent(document);
 

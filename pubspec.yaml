@@ -46,6 +46,7 @@ dependencies:
   just_audio: ^0.10.4
   path_provider: ^2.1.5
   connectivity_plus: ^6.1.4
+  flutter_inappwebview: ^6.1.5
 
 dependency_overrides:
   flutter_tts:
