@@ -189,7 +189,7 @@ class NovelExtractorService {
     final url = normalizeNovelUrl(rawUrl);
     final response = await http.get(
       url,
-      headers: {'User-Agent': AppConstants.mobileUserAgent},
+      headers: AppConstants.novelPageRequestHeaders,
     );
 
     if (response.statusCode < 200 || response.statusCode >= 300) {
