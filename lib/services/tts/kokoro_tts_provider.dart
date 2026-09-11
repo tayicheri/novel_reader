@@ -13,8 +13,6 @@ class KokoroTtsProvider implements TtsProvider {
   })  : _settings = settings ?? SettingsRepository.instance,
         _runtime = runtime ?? OnDeviceKokoroRuntime();
 
-  static const int chunkLength = 400;
-
   final SettingsRepository _settings;
   final KokoroRuntime _runtime;
   Future<void>? _serialize;
@@ -51,7 +49,7 @@ class KokoroTtsProvider implements TtsProvider {
     required String outputDir,
     required String baseName,
   }) async {
-    final chunks = TextChunker.split(text, maxChunkLength: chunkLength);
+    final chunks = TextChunker.splitForKokoro(text);
     if (chunks.isEmpty) {
       throw TtsSynthesisException('Texte vide pour la synthèse audio.');
     }

@@ -49,5 +49,26 @@ void main() {
     final second = await session.synthesizeNext();
     expect(second, '/tmp/ch_1.wav');
     expect(provider.calls, 2);
+    expect(session.synthesizedTextFraction, 1.0);
+  });
+
+  test('splitTextChunks Kokoro coupe sur la ponctuation', () {
+    expect(
+      splitTextChunks(
+        'Hello, world. Next',
+        engine: TtsEngine.kokoro,
+      ),
+      ['Hello,', 'world.', 'Next'],
+    );
+  });
+
+  test('splitTextChunks natif empile encore les paragraphes', () {
+    expect(
+      splitTextChunks(
+        'Paragraphe un.\n\nParagraphe deux.',
+        engine: TtsEngine.native,
+      ),
+      ['Paragraphe un.\n\nParagraphe deux.'],
+    );
   });
 }

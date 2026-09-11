@@ -253,6 +253,9 @@ class TtsSynthesisService implements ChapterAudioSynthesis {
     required String text,
   }) async {
     if (await getCached(sourceUrl) != null) return;
+    final engine = await _settings.resolveEffectiveEngine();
+    // Native Android TTS rejects overlapping synthesizeToFile (returns 0, no file).
+    if (engine == TtsEngine.native) return;
     final session = await createSession(sourceUrl: sourceUrl, text: text);
     await session.firstSegmentPath();
   }

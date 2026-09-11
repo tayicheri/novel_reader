@@ -1,5 +1,29 @@
 class TextChunker {
   static const int maxChunkLength = 3500;
+  static const int kokoroMaxChunkLength = 400;
+
+  /// Coupe dès qu'une ponctuation est suivie d'un blanc, pour des inférences Kokoro courtes.
+  static final _kokoroPunctuationBreak = RegExp(r'[.!?,;:…](?=\s)');
+
+  static List<String> splitForKokoro(String text) {
+    final trimmed = text.trim();
+    if (trimmed.isEmpty) return [];
+
+    final chunks = <String>[];
+    var start = 0;
+    for (final match in _kokoroPunctuationBreak.allMatches(trimmed)) {
+      final slice = trimmed.substring(start, match.end).trim();
+      if (slice.isNotEmpty) {
+        _appendBounded(slice, kokoroMaxChunkLength, chunks);
+      }
+      start = match.end;
+    }
+    final rest = trimmed.substring(start).trim();
+    if (rest.isNotEmpty) {
+      _appendBounded(rest, kokoroMaxChunkLength, chunks);
+    }
+    return chunks;
+  }
 
   static List<String> split(
     String text, {
@@ -42,6 +66,14 @@ class TextChunker {
 
     flush();
     return chunks;
+  }
+
+  static void _appendBounded(String part, int limit, List<String> chunks) {
+    if (part.length <= limit) {
+      chunks.add(part);
+      return;
+    }
+    _splitLongPart(part, limit, chunks);
   }
 
   static void _splitLongPart(String part, int limit, List<String> chunks) {
