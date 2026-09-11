@@ -17,11 +17,15 @@ class ChapterAudioPlayerBar extends StatefulWidget {
     required this.chapter,
     required this.playback,
     required this.audioLoader,
+    this.autoPlay = false,
+    this.onChapterFinished,
   });
 
   final NovelChapter chapter;
   final AudioPlaybackService playback;
   final ChapterAudioLoaderService audioLoader;
+  final bool autoPlay;
+  final VoidCallback? onChapterFinished;
 
   @override
   State<ChapterAudioPlayerBar> createState() => ChapterAudioPlayerBarState();
@@ -31,6 +35,8 @@ class ChapterAudioPlayerBarState extends State<ChapterAudioPlayerBar> {
   AudioPlayerUiState _uiState = AudioPlayerUiState.idle;
   ProgressiveAudioSession? _activeSession;
   String? _errorMessage;
+  bool _segmentsFullyLoaded = false;
+  bool _finishedNotified = false;
 
   Duration _position = Duration.zero;
   Duration _duration = Duration.zero;
@@ -44,7 +50,7 @@ class ChapterAudioPlayerBarState extends State<ChapterAudioPlayerBar> {
   void initState() {
     super.initState();
     _bindStreams();
-    _checkCache();
+    _bootstrap();
   }
 
   @override
@@ -52,6 +58,11 @@ class ChapterAudioPlayerBarState extends State<ChapterAudioPlayerBar> {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.chapter.sourceUrl != widget.chapter.sourceUrl) {
       _onChapterChanged();
+    } else if (widget.autoPlay &&
+        !oldWidget.autoPlay &&
+        (_uiState == AudioPlayerUiState.idle ||
+            _uiState == AudioPlayerUiState.ready)) {
+      unawaited(_startPlayback());
     }
   }
 
@@ -61,6 +72,13 @@ class ChapterAudioPlayerBarState extends State<ChapterAudioPlayerBar> {
     _durationSub?.cancel();
     _playerStateSub?.cancel();
     super.dispose();
+  }
+
+  Future<void> _bootstrap() async {
+    await _checkCache();
+    if (widget.autoPlay && mounted) {
+      await _startPlayback();
+    }
   }
 
   void _bindStreams() {
@@ -75,6 +93,14 @@ class ChapterAudioPlayerBarState extends State<ChapterAudioPlayerBar> {
     _playerStateSub = widget.playback.playerStateStream.listen((state) {
       if (!mounted) return;
       if (state.processingState == ProcessingState.loading) return;
+      if (state.processingState == ProcessingState.completed &&
+          _segmentsFullyLoaded &&
+          !_finishedNotified &&
+          widget.playback.currentUrl == widget.chapter.sourceUrl) {
+        _finishedNotified = true;
+        widget.onChapterFinished?.call();
+        return;
+      }
       setState(() {
         if (state.playing) {
           _uiState = AudioPlayerUiState.playing;
@@ -87,6 +113,8 @@ class ChapterAudioPlayerBarState extends State<ChapterAudioPlayerBar> {
 
   Future<void> _onChapterChanged() async {
     await widget.playback.stop();
+    _finishedNotified = false;
+    _segmentsFullyLoaded = false;
     setState(() {
       _uiState = AudioPlayerUiState.idle;
       _activeSession = null;
@@ -95,6 +123,9 @@ class ChapterAudioPlayerBarState extends State<ChapterAudioPlayerBar> {
       _duration = Duration.zero;
     });
     await _checkCache();
+    if (widget.autoPlay && mounted) {
+      await _startPlayback();
+    }
   }
 
   Future<void> _checkCache() async {
@@ -112,12 +143,15 @@ class ChapterAudioPlayerBarState extends State<ChapterAudioPlayerBar> {
     }
   }
 
+  Future<void> startPlayback() => _startPlayback();
+
   Future<void> _startPlayback() async {
     if (_uiState == AudioPlayerUiState.preparing) return;
 
     setState(() {
       _uiState = AudioPlayerUiState.preparing;
       _errorMessage = null;
+      _finishedNotified = false;
     });
 
     try {
@@ -126,17 +160,21 @@ class ChapterAudioPlayerBarState extends State<ChapterAudioPlayerBar> {
 
       if (cached != null) {
         try {
+          _segmentsFullyLoaded = true;
           await widget.playback.play(
             sourceUrl: widget.chapter.sourceUrl,
             audio: cached,
+            title: widget.chapter.title,
           );
           if (!mounted) return;
           setState(() {
             _uiState = AudioPlayerUiState.playing;
             _duration = Duration(milliseconds: cached.durationMs);
           });
+          _prefetchNext();
           return;
         } on PlayerException {
+          _segmentsFullyLoaded = false;
           await widget.audioLoader.invalidateCachedAudio(widget.chapter);
         }
       }
@@ -158,17 +196,21 @@ class ChapterAudioPlayerBarState extends State<ChapterAudioPlayerBar> {
   }
 
   Future<void> _playProgressive() async {
-    final session = await widget.audioLoader.createPlaybackSession(widget.chapter);
-    final firstPath = await session.synthesizeNext();
+    final session =
+        await widget.audioLoader.createPlaybackSession(widget.chapter);
+    final firstPath = await session.firstSegmentPath();
     if (!mounted || firstPath == null) return;
 
     _activeSession = session;
+    _segmentsFullyLoaded = session.isComplete;
 
     await widget.playback.playProgressive(
       sourceUrl: widget.chapter.sourceUrl,
       firstSegmentPath: firstPath,
+      title: widget.chapter.title,
       produceNextSegment: session.synthesizeNext,
       onAllSegmentsLoaded: () async {
+        _segmentsFullyLoaded = true;
         if (!mounted || _activeSession == null) return;
         final durationMs = widget.playback.totalDuration.inMilliseconds;
         await widget.audioLoader.savePlaybackSession(
@@ -182,6 +224,11 @@ class ChapterAudioPlayerBarState extends State<ChapterAudioPlayerBar> {
 
     if (!mounted) return;
     setState(() => _uiState = AudioPlayerUiState.playing);
+    _prefetchNext();
+  }
+
+  void _prefetchNext() {
+    widget.audioLoader.onChapterDisplayed(widget.chapter);
   }
 
   int _estimateDurationMs() {
@@ -200,6 +247,8 @@ class ChapterAudioPlayerBarState extends State<ChapterAudioPlayerBar> {
       _errorMessage = null;
       _position = Duration.zero;
       _duration = Duration.zero;
+      _segmentsFullyLoaded = false;
+      _finishedNotified = false;
     });
 
     await _startPlayback();

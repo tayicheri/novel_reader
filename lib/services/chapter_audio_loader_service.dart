@@ -5,7 +5,6 @@ import '../data/models/cached_audio.dart';
 import '../data/repositories/audio_cache_repository.dart';
 import '../data/repositories/audio_progress_repository.dart';
 import '../data/repositories/pages_cache_repository.dart';
-import '../data/repositories/settings_repository.dart';
 import 'chapter_loader_service.dart';
 import 'novel_extractor.dart';
 import 'tts/progressive_audio_session.dart';
@@ -62,7 +61,15 @@ class ChapterAudioLoaderService {
 
   void onChapterDisplayed(NovelChapter chapter) {
     unawaited(_prefetchNextChapterText(chapter));
+    unawaited(_prefetchNextChapterAudio(chapter));
     unawaited(evictBehindAudio(chapter));
+  }
+
+  Future<void> prefetchChapterAudio(NovelChapter chapter) {
+    return _synthesis.prefetchFirstSegment(
+      sourceUrl: chapter.sourceUrl,
+      text: chapter.content,
+    );
   }
 
   /// Précharge uniquement le texte du chapitre suivant (pas l'audio).
@@ -78,23 +85,23 @@ class ChapterAudioLoaderService {
     }
   }
 
+  Future<void> _prefetchNextChapterAudio(NovelChapter current) async {
+    final url = current.nextUrl;
+    if (url == null) return;
+    try {
+      final chapter = await _resolveChapterText(url);
+      await prefetchChapterAudio(chapter);
+    } catch (_) {
+      // ignore
+    }
+  }
+
   Future<void> evictBehindAudio(NovelChapter current) async {
     var url = current.previousUrl;
     var depth = 1;
 
     while (url != null) {
-      final hasNative = _audioCache.contains(url, TtsEngine.native);
-      final hasCloudGemini = _audioCache.contains(
-        url,
-        TtsEngine.cloud,
-        cloudProvider: CloudTtsProvider.gemini,
-      );
-      final hasCloudOpenAi = _audioCache.contains(
-        url,
-        TtsEngine.cloud,
-        cloudProvider: CloudTtsProvider.openai,
-      );
-      if (!hasNative && !hasCloudGemini && !hasCloudOpenAi) {
+      if (!_audioCache.containsAny(url)) {
         break;
       }
 

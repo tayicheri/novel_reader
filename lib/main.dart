@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:hive_flutter/hive_flutter.dart';
+import 'package:just_audio_background/just_audio_background.dart';
 
 import 'app.dart';
 import 'core/hive_boxes.dart';
@@ -14,6 +15,12 @@ import 'data/repositories/settings_repository.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await JustAudioBackground.init(
+    androidNotificationChannelId: 'com.tayicheri.tayi_whisper.audio',
+    androidNotificationChannelName: 'Lecture audio',
+    androidNotificationOngoing: true,
+    androidStopForegroundOnPause: true,
+  );
   await Hive.initFlutter();
   Hive.registerAdapter(FavoriteWorkAdapter());
   Hive.registerAdapter(CachedChapterAdapter());

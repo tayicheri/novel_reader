@@ -120,13 +120,19 @@ void main() {
     });
 
     test('persiste le mode sombre', () async {
-      expect(repository.isDarkMode.value, isFalse);
+      expect(repository.themePreference.value, ThemePreference.light);
 
-      await repository.setDarkMode(true);
-      expect(repository.isDarkMode.value, isTrue);
+      await repository.setThemePreference(ThemePreference.dark);
+      expect(repository.themePreference.value, ThemePreference.dark);
 
       repository.init(box: settingsBox);
-      expect(repository.isDarkMode.value, isTrue);
+      expect(repository.themePreference.value, ThemePreference.dark);
+    });
+
+    test('migre isDarkMode bool vers ThemePreference', () async {
+      await settingsBox.put('isDarkMode', true);
+      repository.init(box: settingsBox);
+      expect(repository.themePreference.value, ThemePreference.dark);
     });
 
     test('persiste le moteur TTS', () async {
@@ -142,6 +148,17 @@ void main() {
       expect(repository.cloudTtsProvider, CloudTtsProvider.openai);
       expect(repository.openaiApiKey, 'sk-test');
       expect(repository.cloudTtsApiKey, 'sk-test');
+    });
+
+    test('persiste le moteur Kokoro et sa voix', () async {
+      await repository.setTtsLanguage('fr-FR');
+      await repository.setTtsEngine(TtsEngine.kokoro);
+      await repository.setKokoroVoice('ff_siwis');
+
+      repository.init(box: settingsBox);
+      expect(repository.ttsEngine, TtsEngine.kokoro);
+      expect(repository.kokoroVoice, 'ff_siwis');
+      expect(await repository.resolveEffectiveEngine(), TtsEngine.kokoro);
     });
 
     test('migre cloudTtsApiKey vers openaiApiKey', () async {

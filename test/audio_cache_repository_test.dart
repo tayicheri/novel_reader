@@ -195,5 +195,53 @@ void main() {
 
       expect(result, isNull);
     });
+
+    test('sépare le cache Kokoro par voix', () async {
+      final heart = File('${tempDir.path}/heart.wav');
+      final siwis = File('${tempDir.path}/siwis.wav');
+      await heart.writeAsString('heart');
+      await siwis.writeAsString('siwis');
+
+      await repository.put(
+        CachedAudio(
+          sourceUrl: 'https://exemple.com/ch-kokoro',
+          engine: TtsEngine.kokoro,
+          cloudVoice: 'af_heart',
+          segmentPaths: [heart.path],
+          durationMs: 800,
+        ),
+      );
+      await repository.put(
+        CachedAudio(
+          sourceUrl: 'https://exemple.com/ch-kokoro',
+          engine: TtsEngine.kokoro,
+          cloudVoice: 'ff_siwis',
+          segmentPaths: [siwis.path],
+          durationMs: 900,
+        ),
+      );
+
+      expect(
+        repository
+            .get(
+              'https://exemple.com/ch-kokoro',
+              TtsEngine.kokoro,
+              cloudVoice: 'af_heart',
+            )
+            ?.durationMs,
+        800,
+      );
+      expect(
+        repository
+            .get(
+              'https://exemple.com/ch-kokoro',
+              TtsEngine.kokoro,
+              cloudVoice: 'ff_siwis',
+            )
+            ?.durationMs,
+        900,
+      );
+      expect(repository.containsAny('https://exemple.com/ch-kokoro'), isTrue);
+    });
   });
 }

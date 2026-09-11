@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 
 import '../../core/cloud_narration_styles.dart';
@@ -33,14 +34,34 @@ class ProgressiveAudioSession {
 
   int _nextIndex = 0;
   final List<String> _paths = [];
+  Future<void> _gate = Future.value();
 
   int get totalChunks => chunks.length;
   int get completedChunks => _paths.length;
   bool get isComplete => _nextIndex >= chunks.length;
   List<String> get segmentPaths => List.unmodifiable(_paths);
 
+  Future<T> _locked<T>(Future<T> Function() run) {
+    final previous = _gate;
+    final done = Completer<void>();
+    _gate = done.future;
+    return previous.then((_) => run()).whenComplete(done.complete);
+  }
+
+  /// Returns the first synthesized segment, synthesizing it if needed.
+  Future<String?> firstSegmentPath() {
+    return _locked(() async {
+      if (_paths.isNotEmpty) return _paths.first;
+      return _synthesizeUnlocked();
+    });
+  }
+
   /// Synthétise le prochain segment. Retourne `null` si tout est terminé.
-  Future<String?> synthesizeNext() async {
+  Future<String?> synthesizeNext() {
+    return _locked(_synthesizeUnlocked);
+  }
+
+  Future<String?> _synthesizeUnlocked() async {
     if (isComplete) return null;
 
     final index = _nextIndex++;
@@ -55,6 +76,7 @@ String segmentExtensionFor(
   TtsEngine engine, {
   CloudTtsProvider? cloudProvider,
 }) {
+  if (engine == TtsEngine.kokoro) return 'wav';
   if (engine == TtsEngine.cloud) {
     if (cloudProvider == CloudTtsProvider.gemini) return 'wav';
     return 'mp3';
@@ -63,8 +85,13 @@ String segmentExtensionFor(
   return 'wav';
 }
 
-List<String> splitTextChunks(String text) {
-  final chunks = TextChunker.split(text);
+List<String> splitTextChunks(
+  String text, {
+  TtsEngine engine = TtsEngine.native,
+}) {
+  final maxChunkLength =
+      engine == TtsEngine.kokoro ? 400 : TextChunker.maxChunkLength;
+  final chunks = TextChunker.split(text, maxChunkLength: maxChunkLength);
   if (chunks.isEmpty) {
     throw TtsSynthesisException('Texte vide pour la synthèse audio.');
   }

@@ -5,11 +5,14 @@ import 'package:hive_flutter/hive_flutter.dart';
 import '../../core/cloud_narration_styles.dart';
 import '../../core/cloud_voice_options.dart';
 import '../../core/hive_boxes.dart';
+import '../../core/kokoro_voice_options.dart';
 import '../../core/tts_language_options.dart';
 
-enum TtsEngine { native, cloud }
+enum TtsEngine { native, cloud, kokoro }
 
 enum CloudTtsProvider { gemini, openai }
+
+enum ThemePreference { system, light, dark }
 
 class SettingsRepository {
   SettingsRepository._();
@@ -17,6 +20,7 @@ class SettingsRepository {
   static final SettingsRepository instance = SettingsRepository._();
 
   static const String _isDarkModeKey = 'isDarkMode';
+  static const String _themePreferenceKey = 'themePreference';
   static const String _ttsEngineKey = 'ttsEngine';
   static const String _ttsLanguageKey = 'ttsLanguage';
   static const String _cloudTtsProviderKey = 'cloudTtsProvider';
@@ -26,14 +30,16 @@ class SettingsRepository {
   static const String _geminiVoiceKey = 'geminiVoice';
   static const String _openaiVoiceKey = 'openaiVoice';
   static const String _cloudNarrationStyleKey = 'cloudNarrationStyle';
+  static const String _kokoroVoiceKey = 'kokoroVoice';
 
   Box? _box;
-  final ValueNotifier<bool> isDarkMode = ValueNotifier(false);
+  final ValueNotifier<ThemePreference> themePreference =
+      ValueNotifier(ThemePreference.light);
   final Connectivity _connectivity = Connectivity();
 
   void init({Box? box}) {
     _box = box;
-    isDarkMode.value = _readDarkMode();
+    themePreference.value = _readThemePreference();
     _migrateLegacyCloudApiKey();
   }
 
@@ -55,20 +61,31 @@ class SettingsRepository {
     box.delete(_cloudTtsApiKeyKey);
   }
 
-  bool _readDarkMode() {
-    final value = box.get(_isDarkModeKey);
-    return value is bool ? value : false;
+  ThemePreference _readThemePreference() {
+    final stored = box.get(_themePreferenceKey);
+    if (stored is String) {
+      for (final value in ThemePreference.values) {
+        if (value.name == stored) return value;
+      }
+    }
+    final legacy = box.get(_isDarkModeKey);
+    if (legacy is bool) {
+      return legacy ? ThemePreference.dark : ThemePreference.light;
+    }
+    return ThemePreference.light;
   }
 
-  Future<void> setDarkMode(bool value) async {
-    await box.put(_isDarkModeKey, value);
-    isDarkMode.value = value;
+  Future<void> setThemePreference(ThemePreference value) async {
+    await box.put(_themePreferenceKey, value.name);
+    themePreference.value = value;
   }
 
   TtsEngine get ttsEngine {
     final value = box.get(_ttsEngineKey);
     if (value is String) {
-      return TtsEngine.values.byName(value);
+      for (final engine in TtsEngine.values) {
+        if (engine.name == value) return engine;
+      }
     }
     return TtsEngine.native;
   }
@@ -145,6 +162,21 @@ class SettingsRepository {
     await box.put(_cloudNarrationStyleKey, value.name);
   }
 
+  String get kokoroVoice {
+    final value = box.get(_kokoroVoiceKey);
+    return normalizeKokoroVoiceId(
+      ttsLanguage,
+      value is String ? value : null,
+    );
+  }
+
+  Future<void> setKokoroVoice(String voiceId) async {
+    await box.put(
+      _kokoroVoiceKey,
+      normalizeKokoroVoiceId(ttsLanguage, voiceId),
+    );
+  }
+
   String? apiKeyForCloudProvider(CloudTtsProvider provider) {
     switch (provider) {
       case CloudTtsProvider.gemini:
@@ -188,13 +220,17 @@ class SettingsRepository {
   }
 
   Future<TtsEngine> resolveEffectiveEngine() async {
-    if (ttsEngine != TtsEngine.cloud) {
-      return TtsEngine.native;
+    switch (ttsEngine) {
+      case TtsEngine.native:
+        return TtsEngine.native;
+      case TtsEngine.kokoro:
+        return TtsEngine.kokoro;
+      case TtsEngine.cloud:
+        if (apiKeyForCloudProvider(cloudTtsProvider) == null) {
+          return TtsEngine.native;
+        }
+        return TtsEngine.cloud;
     }
-    if (apiKeyForCloudProvider(cloudTtsProvider) == null) {
-      return TtsEngine.native;
-    }
-    return TtsEngine.cloud;
   }
 
   Future<CloudTtsProvider?> resolveEffectiveCloudProvider() async {

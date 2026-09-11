@@ -78,6 +78,11 @@ class AudioCacheRepository {
     return null;
   }
 
+  bool containsAny(String rawUrl) {
+    final normalized = normalizeUrl(rawUrl);
+    return box.values.any((entry) => entry.sourceUrl == normalized);
+  }
+
   bool contains(
     String rawUrl,
     TtsEngine engine, {
@@ -122,6 +127,13 @@ class AudioCacheRepository {
           );
         }
         await _deleteEntry(AudioCacheKey.legacyCloud(normalized));
+      } else if (engine == TtsEngine.kokoro) {
+        for (final entry in box.values.toList()) {
+          if (entry.sourceUrl == normalized &&
+              entry.engine == TtsEngine.kokoro) {
+            await _deleteEntry(entry.cacheKey);
+          }
+        }
       } else {
         await _deleteEntry(AudioCacheKey.build(normalized, engine));
       }
@@ -158,6 +170,9 @@ class AudioCacheRepository {
     final normalized = normalizeUrl(sourceUrl);
     if (engine == TtsEngine.native) {
       return '${normalized.hashCode}_native';
+    }
+    if (engine == TtsEngine.kokoro) {
+      return '${normalized.hashCode}_kokoro_${cloudVoice ?? ''}';
     }
     final provider = cloudProvider ?? CloudTtsProvider.openai;
     final voice = cloudVoice ?? '';
