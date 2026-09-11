@@ -30,7 +30,7 @@ flutter run -d android
 flutter run -d "iPhone 16"
 ```
 
-> Flutter 3.44+ utilise **Swift Package Manager** pour les plugins iOS (plus de CocoaPods). Si vous voyez encore des avertissements CocoaPods, exécutez `cd ios && pod deintegrate` puis supprimez `Podfile` et le dossier `Pods`.
+> Flutter 3.44+ utilise **Swift Package Manager** pour les plugins iOS. CocoaPods n’est plus utilisé dans ce projet.
 
 ## Utilisation
 
