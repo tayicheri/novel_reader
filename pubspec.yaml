@@ -84,6 +84,8 @@ flutter:
   assets:
     - assets/tokenizer_vocab.json
     - assets/lexicon.json
+    - assets/us_gold.json
+    - assets/us_silver.json
 
   # To add assets to your application, add an assets section, like this:
   # assets:

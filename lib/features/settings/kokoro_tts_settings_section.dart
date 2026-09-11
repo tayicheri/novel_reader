@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:audio_service/audio_service.dart';
 import 'package:flutter/material.dart';
 import 'package:just_audio/just_audio.dart';
 import 'package:path_provider/path_provider.dart';
@@ -80,7 +81,17 @@ class _KokoroTtsSettingsSectionState extends State<KokoroTtsSettingsSection> {
       );
       final player = AudioPlayer();
       try {
-        await player.setFilePath(tempFile.path);
+        await player.setAudioSource(
+          AudioSource.file(
+            tempFile.path,
+            tag: MediaItem(
+              id: 'kokoro-preview-$_voiceId',
+              title: 'Aperçu Kokoro',
+              album: 'Tayi Whisper',
+              artist: 'Tayi Whisper',
+            ),
+          ),
+        );
         await player.play();
         await player.processingStateStream.firstWhere(
           (state) => state == ProcessingState.completed,

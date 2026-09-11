@@ -16,6 +16,7 @@ class NativeTtsProvider implements TtsProvider {
   final String Function() _languageCode;
   bool _awaitSynthConfigured = false;
   String? _appliedLanguage;
+  Future<void>? _serialize;
 
   Future<void> _ensureConfigured() async {
     final language = _languageCode();
@@ -35,10 +36,25 @@ class NativeTtsProvider implements TtsProvider {
   Future<String> synthesizeChunk({
     required String text,
     required String outputPath,
+  }) {
+    final previous = _serialize ?? Future.value();
+    final current = previous.then(
+      (_) => _synthesizeChunk(text: text, outputPath: outputPath),
+    );
+    _serialize = current.then((_) {}, onError: (_) {});
+    return current;
+  }
+
+  Future<String> _synthesizeChunk({
+    required String text,
+    required String outputPath,
   }) async {
     await _ensureConfigured();
     final result = await _tts.synthesizeToFile(text, outputPath, true);
-    if (result == null) {
+    if (result == null ||
+        result == 0 ||
+        result == false ||
+        !File(outputPath).existsSync()) {
       throw TtsSynthesisException('Échec de la synthèse native.');
     }
     return outputPath;
