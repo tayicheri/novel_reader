@@ -111,177 +111,186 @@ class _SettingsScreenState extends State<SettingsScreen> {
       appBar: AppBar(
         title: const Text('Réglages'),
       ),
-      body: ListView(
+      body: SingleChildScrollView(
         padding: const EdgeInsets.all(20),
-        children: [
-          Text(
-            'Apparence',
-            style: theme.textTheme.titleMedium,
-          ),
-          const SizedBox(height: 12),
-          SegmentedButton<ThemePreference>(
-            showSelectedIcon: false,
-            segments: const [
-              ButtonSegment(
-                value: ThemePreference.system,
-                label: Text('Système'),
-                icon: Icon(Icons.brightness_auto),
-              ),
-              ButtonSegment(
-                value: ThemePreference.light,
-                label: Text('Clair'),
-                icon: Icon(Icons.light_mode),
-              ),
-              ButtonSegment(
-                value: ThemePreference.dark,
-                label: Text('Sombre'),
-                icon: Icon(Icons.dark_mode),
-              ),
-            ],
-            selected: {_themePreference},
-            onSelectionChanged: (selection) => _saveTheme(selection.first),
-          ),
-          const SizedBox(height: 32),
-          Text(
-            'Synthèse vocale',
-            style: theme.textTheme.titleMedium,
-          ),
-          const SizedBox(height: 12),
-          SegmentedButton<TtsEngine>(
-            showSelectedIcon: false,
-            segments: const [
-              ButtonSegment(
-                value: TtsEngine.native,
-                label: Text('Natif'),
-              ),
-              ButtonSegment(
-                value: TtsEngine.cloud,
-                label: Text('Cloud'),
-              ),
-              ButtonSegment(
-                value: TtsEngine.kokoro,
-                label: Text('Kokoro'),
-              ),
-            ],
-            selected: {_ttsEngine},
-            onSelectionChanged: (selection) => _saveTtsEngine(selection.first),
-          ),
-          const SizedBox(height: 12),
-          Text(
-            _engineHint(),
-            style: theme.textTheme.bodySmall?.copyWith(
-              color: theme.colorScheme.onSurfaceVariant,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text(
+              'Apparence',
+              style: theme.textTheme.titleMedium,
             ),
-          ),
-          if (isCloud) ...[
+            const SizedBox(height: 12),
+            SegmentedButton<ThemePreference>(
+              showSelectedIcon: false,
+              segments: const [
+                ButtonSegment(
+                  value: ThemePreference.system,
+                  label: Text('Système'),
+                  icon: Icon(Icons.brightness_auto),
+                ),
+                ButtonSegment(
+                  value: ThemePreference.light,
+                  label: Text('Clair'),
+                  icon: Icon(Icons.light_mode),
+                ),
+                ButtonSegment(
+                  value: ThemePreference.dark,
+                  label: Text('Sombre'),
+                  icon: Icon(Icons.dark_mode),
+                ),
+              ],
+              selected: {_themePreference},
+              onSelectionChanged: (selection) => _saveTheme(selection.first),
+            ),
+            const SizedBox(height: 32),
+            Text(
+              'Synthèse vocale',
+              style: theme.textTheme.titleMedium,
+            ),
+            const SizedBox(height: 12),
+            SegmentedButton<TtsEngine>(
+              showSelectedIcon: false,
+              segments: const [
+                ButtonSegment(
+                  value: TtsEngine.native,
+                  label: Text('Natif'),
+                ),
+                ButtonSegment(
+                  value: TtsEngine.cloud,
+                  label: Text('Cloud'),
+                ),
+                ButtonSegment(
+                  value: TtsEngine.kokoro,
+                  label: Text('Kokoro'),
+                ),
+              ],
+              selected: {_ttsEngine},
+              onSelectionChanged: (selection) => _saveTtsEngine(selection.first),
+            ),
+            const SizedBox(height: 12),
+            Text(
+              _engineHint(),
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
+            ),
+            if (isCloud) ...[
+              const SizedBox(height: 24),
+              Text(
+                'Fournisseur cloud',
+                style: theme.textTheme.titleSmall,
+              ),
+              const SizedBox(height: 8),
+              DropdownButtonFormField<CloudTtsProvider>(
+                key: ValueKey('cloud_provider_$_cloudTtsProvider'),
+                initialValue: _cloudTtsProvider,
+                decoration: const InputDecoration(
+                  labelText: 'API de synthèse',
+                  border: OutlineInputBorder(),
+                ),
+                items: [
+                  for (final option in cloudTtsProviderOptions)
+                    DropdownMenuItem(
+                      value: option.provider,
+                      child: Text(option.label),
+                    ),
+                ],
+                onChanged: _saveCloudTtsProvider,
+              ),
+              const SizedBox(height: 16),
+              if (_cloudTtsProvider == CloudTtsProvider.gemini) ...[
+                TextField(
+                  key: const ValueKey('gemini_api_key'),
+                  controller: _geminiApiKeyController,
+                  obscureText: true,
+                  onChanged: (_) => setState(() {}),
+                  decoration: const InputDecoration(
+                    labelText: 'Clé API Gemini',
+                    hintText: 'AIza...',
+                  ),
+                ),
+                const SizedBox(height: 12),
+                FilledButton(
+                  onPressed: _saveGeminiApiKey,
+                  child: const Text('Enregistrer la clé Gemini'),
+                ),
+                const SizedBox(height: 24),
+                CloudTtsSettingsSection(
+                  key: const ValueKey('cloud_section_gemini'),
+                  provider: CloudTtsProvider.gemini,
+                  hasApiKey: _geminiApiKeyController.text.trim().isNotEmpty ||
+                      (_settings.geminiApiKey?.isNotEmpty ?? false),
+                ),
+              ] else ...[
+                TextField(
+                  key: const ValueKey('openai_api_key'),
+                  controller: _openaiApiKeyController,
+                  obscureText: true,
+                  onChanged: (_) => setState(() {}),
+                  decoration: const InputDecoration(
+                    labelText: 'Clé API OpenAI',
+                    hintText: 'sk-...',
+                  ),
+                ),
+                const SizedBox(height: 12),
+                FilledButton(
+                  onPressed: _saveOpenaiApiKey,
+                  child: const Text('Enregistrer la clé OpenAI'),
+                ),
+                const SizedBox(height: 24),
+                CloudTtsSettingsSection(
+                  key: const ValueKey('cloud_section_openai'),
+                  provider: CloudTtsProvider.openai,
+                  hasApiKey: _openaiApiKeyController.text.trim().isNotEmpty ||
+                      (_settings.openaiApiKey?.isNotEmpty ?? false),
+                ),
+              ],
+              const SizedBox(height: 8),
+              Text(
+                'Changer de fournisseur : utilisez le bouton ↻ du lecteur pour régénérer l\'audio.',
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: theme.colorScheme.onSurfaceVariant,
+                ),
+              ),
+            ],
+            if (isKokoro) ...[
+              const SizedBox(height: 24),
+              KokoroTtsSettingsSection(
+                key: ValueKey('kokoro_section_$_ttsLanguage'),
+              ),
+            ],
             const SizedBox(height: 24),
             Text(
-              'Fournisseur cloud',
+              'Langue de lecture',
               style: theme.textTheme.titleSmall,
             ),
             const SizedBox(height: 8),
-            DropdownButtonFormField<CloudTtsProvider>(
-              key: ValueKey(_cloudTtsProvider),
-              initialValue: _cloudTtsProvider,
+            DropdownButtonFormField<String>(
+              key: ValueKey('tts_language_$_ttsLanguage'),
+              initialValue: _ttsLanguage,
               decoration: const InputDecoration(
-                labelText: 'API de synthèse',
+                labelText: 'Langue TTS',
                 border: OutlineInputBorder(),
               ),
               items: [
-                for (final option in cloudTtsProviderOptions)
+                for (final option in ttsLanguageOptions)
                   DropdownMenuItem(
-                    value: option.provider,
+                    value: option.code,
                     child: Text(option.label),
                   ),
               ],
-              onChanged: _saveCloudTtsProvider,
+              onChanged: _saveTtsLanguage,
             ),
-            const SizedBox(height: 16),
-            if (_cloudTtsProvider == CloudTtsProvider.gemini) ...[
-              TextField(
-                controller: _geminiApiKeyController,
-                obscureText: true,
-                onChanged: (_) => setState(() {}),
-                decoration: const InputDecoration(
-                  labelText: 'Clé API Gemini',
-                  hintText: 'AIza...',
-                ),
-              ),
-              const SizedBox(height: 12),
-              FilledButton(
-                onPressed: _saveGeminiApiKey,
-                child: const Text('Enregistrer la clé Gemini'),
-              ),
-              const SizedBox(height: 24),
-              CloudTtsSettingsSection(
-                provider: CloudTtsProvider.gemini,
-                hasApiKey: _geminiApiKeyController.text.trim().isNotEmpty ||
-                    (_settings.geminiApiKey?.isNotEmpty ?? false),
-              ),
-            ] else ...[
-              TextField(
-                controller: _openaiApiKeyController,
-                obscureText: true,
-                onChanged: (_) => setState(() {}),
-                decoration: const InputDecoration(
-                  labelText: 'Clé API OpenAI',
-                  hintText: 'sk-...',
-                ),
-              ),
-              const SizedBox(height: 12),
-              FilledButton(
-                onPressed: _saveOpenaiApiKey,
-                child: const Text('Enregistrer la clé OpenAI'),
-              ),
-              const SizedBox(height: 24),
-              CloudTtsSettingsSection(
-                provider: CloudTtsProvider.openai,
-                hasApiKey: _openaiApiKeyController.text.trim().isNotEmpty ||
-                    (_settings.openaiApiKey?.isNotEmpty ?? false),
-              ),
-            ],
             const SizedBox(height: 8),
             Text(
-              'Changer de fournisseur : utilisez le bouton ↻ du lecteur pour régénérer l\'audio.',
+              _languageHint(),
               style: theme.textTheme.bodySmall?.copyWith(
                 color: theme.colorScheme.onSurfaceVariant,
               ),
             ),
           ],
-          if (isKokoro) ...[
-            const SizedBox(height: 24),
-            KokoroTtsSettingsSection(key: ValueKey(_ttsLanguage)),
-          ],
-          const SizedBox(height: 24),
-          Text(
-            'Langue de lecture',
-            style: theme.textTheme.titleSmall,
-          ),
-          const SizedBox(height: 8),
-          DropdownButtonFormField<String>(
-            key: ValueKey(_ttsLanguage),
-            initialValue: _ttsLanguage,
-            decoration: const InputDecoration(
-              labelText: 'Langue TTS',
-              border: OutlineInputBorder(),
-            ),
-            items: [
-              for (final option in ttsLanguageOptions)
-                DropdownMenuItem(
-                  value: option.code,
-                  child: Text(option.label),
-                ),
-            ],
-            onChanged: _saveTtsLanguage,
-          ),
-          const SizedBox(height: 8),
-          Text(
-            _languageHint(),
-            style: theme.textTheme.bodySmall?.copyWith(
-              color: theme.colorScheme.onSurfaceVariant,
-            ),
-          ),
-        ],
+        ),
       ),
     );
   }
