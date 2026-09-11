@@ -3,6 +3,7 @@ import 'dart:io';
 
 import '../../core/cloud_narration_styles.dart';
 import '../../data/repositories/settings_repository.dart';
+import 'chapter_audio_progress.dart';
 import 'text_chunker.dart';
 import 'tts_provider.dart';
 
@@ -40,6 +41,12 @@ class ProgressiveAudioSession {
   int get completedChunks => _paths.length;
   bool get isComplete => _nextIndex >= chunks.length;
   List<String> get segmentPaths => List.unmodifiable(_paths);
+
+  double get synthesizedTextFraction =>
+      ChapterAudioProgress.synthesizedTextFraction(
+        chunks: chunks,
+        completedChunks: completedChunks,
+      );
 
   Future<T> _locked<T>(Future<T> Function() run) {
     final previous = _gate;
@@ -89,9 +96,9 @@ List<String> splitTextChunks(
   String text, {
   TtsEngine engine = TtsEngine.native,
 }) {
-  final maxChunkLength =
-      engine == TtsEngine.kokoro ? 400 : TextChunker.maxChunkLength;
-  final chunks = TextChunker.split(text, maxChunkLength: maxChunkLength);
+  final chunks = engine == TtsEngine.kokoro
+      ? TextChunker.splitForKokoro(text)
+      : TextChunker.split(text);
   if (chunks.isEmpty) {
     throw TtsSynthesisException('Texte vide pour la synthèse audio.');
   }
