@@ -1,6 +1,9 @@
 import 'dart:async';
 
+import 'package:audio_service/audio_service.dart';
+import 'package:audio_session/audio_session.dart';
 import 'package:just_audio/just_audio.dart';
+
 import '../data/models/cached_audio.dart';
 import '../data/repositories/audio_progress_repository.dart';
 
@@ -12,7 +15,9 @@ class AudioPlaybackService {
   final AudioProgressRepository _progress;
 
   String? _currentUrl;
+  String _title = 'Tayi Whisper';
   bool _appendCancelled = false;
+  bool _sessionReady = false;
 
   Stream<Duration> get positionStream => _player.positionStream;
   Stream<Duration?> get durationStream => _player.durationStream;
@@ -21,21 +26,40 @@ class AudioPlaybackService {
   bool get isPlaying => _player.playing;
   String? get currentUrl => _currentUrl;
   Duration get totalDuration => _player.duration ?? Duration.zero;
+  ProcessingState get processingState => _player.processingState;
+
+  Future<void> _ensureAudioSession() async {
+    if (_sessionReady) return;
+    final session = await AudioSession.instance;
+    await session.configure(const AudioSessionConfiguration.music());
+    _sessionReady = true;
+  }
+
+  AudioSource _sourceFor(String path) {
+    return AudioSource.file(
+      path,
+      tag: MediaItem(
+        id: _currentUrl ?? path,
+        title: _title,
+        album: 'Tayi Whisper',
+        artist: 'Tayi Whisper',
+      ),
+    );
+  }
 
   Future<void> play({
     required String sourceUrl,
     required CachedAudio audio,
+    String? title,
   }) async {
+    await _ensureAudioSession();
     _cancelAppend();
     _currentUrl = sourceUrl;
+    _title = title?.trim().isNotEmpty == true ? title!.trim() : 'Tayi Whisper';
 
-    if (audio.segmentPaths.length == 1) {
-      await _player.setFilePath(audio.segmentPaths.first);
-    } else {
-      await _player.setAudioSources(
-        audio.segmentPaths.map(AudioSource.file).toList(),
-      );
-    }
+    await _player.setAudioSources(
+      audio.segmentPaths.map(_sourceFor).toList(),
+    );
 
     final savedMs = _progress.getPosition(sourceUrl);
     if (savedMs > 0) {
@@ -51,12 +75,15 @@ class AudioPlaybackService {
     required String firstSegmentPath,
     required Future<String?> Function() produceNextSegment,
     Future<void> Function()? onAllSegmentsLoaded,
+    String? title,
   }) async {
+    await _ensureAudioSession();
     _cancelAppend();
     _currentUrl = sourceUrl;
+    _title = title?.trim().isNotEmpty == true ? title!.trim() : 'Tayi Whisper';
     _appendCancelled = false;
 
-    await _player.setAudioSources([AudioSource.file(firstSegmentPath)]);
+    await _player.setAudioSources([_sourceFor(firstSegmentPath)]);
 
     final savedMs = _progress.getPosition(sourceUrl);
     if (savedMs > 0) {
@@ -80,7 +107,12 @@ class AudioPlaybackService {
         break;
       }
       if (_appendCancelled) break;
-      await _player.addAudioSource(AudioSource.file(path));
+      await _player.addAudioSource(_sourceFor(path));
+      if (!_appendCancelled &&
+          !_player.playing &&
+          _player.processingState == ProcessingState.completed) {
+        await _player.play();
+      }
     }
   }
 

@@ -44,6 +44,9 @@ class AudioCacheKey {
     if (engine == TtsEngine.native) {
       return '$sourceUrl::native';
     }
+    if (engine == TtsEngine.kokoro) {
+      return '$sourceUrl::kokoro::${cloudVoice ?? ''}';
+    }
     final provider = cloudProvider ?? CloudTtsProvider.openai;
     final voice = cloudVoice ?? '';
     final style = narrationStyle?.name ?? '';

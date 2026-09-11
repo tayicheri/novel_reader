@@ -170,12 +170,12 @@ class _HomeScreenState extends State<HomeScreen> {
                         child: FilledButton(
                           onPressed: _isLoading ? null : () => _loadChapter(),
                           child: _isLoading
-                              ? const SizedBox(
+                              ? SizedBox(
                                   width: 22,
                                   height: 22,
                                   child: CircularProgressIndicator(
                                     strokeWidth: 2,
-                                    color: Colors.white,
+                                    color: theme.colorScheme.onPrimary,
                                   ),
                                 )
                               : const Text('Charger'),

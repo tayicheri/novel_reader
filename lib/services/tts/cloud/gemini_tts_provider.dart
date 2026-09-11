@@ -7,6 +7,7 @@ import 'package:http/http.dart' as http;
 import '../../../core/cloud_narration_styles.dart';
 import '../text_chunker.dart';
 import '../tts_provider.dart';
+import '../wav_encoder.dart';
 import 'cloud_narration_prompt.dart';
 
 class GeminiTtsProvider implements TtsProvider {
@@ -116,49 +117,7 @@ class GeminiTtsProvider implements TtsProvider {
     if (mimeType == 'audio/wav' || mimeType == 'audio/x-wav') {
       return pcm;
     }
-    return _pcmToWav(pcm, sampleRate: 24000, channels: 1, bitsPerSample: 16);
-  }
-
-  static Uint8List _pcmToWav(
-    Uint8List pcm, {
-    required int sampleRate,
-    required int channels,
-    required int bitsPerSample,
-  }) {
-    final byteRate = sampleRate * channels * bitsPerSample ~/ 8;
-    final blockAlign = channels * bitsPerSample ~/ 8;
-    final dataSize = pcm.length;
-    final header = ByteData(44)
-      ..setUint8(0, 0x52) // RIFF
-      ..setUint8(1, 0x49)
-      ..setUint8(2, 0x46)
-      ..setUint8(3, 0x46)
-      ..setUint8(8, 0x57) // WAVE
-      ..setUint8(9, 0x41)
-      ..setUint8(10, 0x56)
-      ..setUint8(11, 0x45)
-      ..setUint8(12, 0x66) // fmt
-      ..setUint8(13, 0x6d)
-      ..setUint8(14, 0x74)
-      ..setUint8(15, 0x20)
-      ..setUint8(36, 0x64) // data
-      ..setUint8(37, 0x61)
-      ..setUint8(38, 0x74)
-      ..setUint8(39, 0x61)
-      ..setUint32(4, 36 + dataSize, Endian.little)
-      ..setUint32(16, 16, Endian.little)
-      ..setUint16(20, 1, Endian.little)
-      ..setUint16(22, channels, Endian.little)
-      ..setUint32(24, sampleRate, Endian.little)
-      ..setUint32(28, byteRate, Endian.little)
-      ..setUint16(32, blockAlign, Endian.little)
-      ..setUint16(34, bitsPerSample, Endian.little)
-      ..setUint32(40, dataSize, Endian.little);
-
-    final wav = Uint8List(44 + dataSize);
-    wav.setRange(0, 44, header.buffer.asUint8List());
-    wav.setRange(44, 44 + dataSize, pcm);
-    return wav;
+    return pcmToWav(pcm, sampleRate: 24000, channels: 1, bitsPerSample: 16);
   }
 
   @override

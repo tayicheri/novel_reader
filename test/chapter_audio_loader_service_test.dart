@@ -79,6 +79,15 @@ class _FakeSynthesis implements ChapterAudioSynthesis {
   }
 
   @override
+  Future<void> prefetchFirstSegment({
+    required String sourceUrl,
+    required String text,
+  }) async {
+    final session = await createSession(sourceUrl: sourceUrl, text: text);
+    await session.firstSegmentPath();
+  }
+
+  @override
   Future<CachedAudio> synthesize({
     required String sourceUrl,
     required String text,

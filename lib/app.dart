@@ -17,12 +17,12 @@ class _TayiWhisperAppState extends State<TayiWhisperApp> {
   @override
   void initState() {
     super.initState();
-    _settingsRepository.isDarkMode.addListener(_onThemeChanged);
+    _settingsRepository.themePreference.addListener(_onThemeChanged);
   }
 
   @override
   void dispose() {
-    _settingsRepository.isDarkMode.removeListener(_onThemeChanged);
+    _settingsRepository.themePreference.removeListener(_onThemeChanged);
     super.dispose();
   }
 
@@ -30,14 +30,19 @@ class _TayiWhisperAppState extends State<TayiWhisperApp> {
 
   @override
   Widget build(BuildContext context) {
-    final isDarkMode = _settingsRepository.isDarkMode.value;
+    final preference = _settingsRepository.themePreference.value;
+    final themeMode = switch (preference) {
+      ThemePreference.system => ThemeMode.system,
+      ThemePreference.light => ThemeMode.light,
+      ThemePreference.dark => ThemeMode.dark,
+    };
 
     return MaterialApp(
       title: 'Tayi Whisper',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.light(),
       darkTheme: AppTheme.dark(),
-      themeMode: isDarkMode ? ThemeMode.dark : ThemeMode.light,
+      themeMode: themeMode,
       home: const HomeScreen(),
     );
   }

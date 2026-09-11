@@ -4,6 +4,7 @@ import '../../core/cloud_tts_options.dart';
 import '../../core/tts_language_options.dart';
 import '../../data/repositories/settings_repository.dart';
 import 'cloud_tts_settings_section.dart';
+import 'kokoro_tts_settings_section.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -20,6 +21,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   late TtsEngine _ttsEngine;
   late CloudTtsProvider _cloudTtsProvider;
   late String _ttsLanguage;
+  late ThemePreference _themePreference;
 
   @override
   void initState() {
@@ -27,6 +29,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     _ttsEngine = _settings.ttsEngine;
     _cloudTtsProvider = _settings.cloudTtsProvider;
     _ttsLanguage = _settings.ttsLanguage;
+    _themePreference = _settings.themePreference.value;
     _geminiApiKeyController.text = _settings.geminiApiKey ?? '';
     _openaiApiKeyController.text = _settings.openaiApiKey ?? '';
   }
@@ -36,6 +39,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
     _geminiApiKeyController.dispose();
     _openaiApiKeyController.dispose();
     super.dispose();
+  }
+
+  Future<void> _saveTheme(ThemePreference preference) async {
+    await _settings.setThemePreference(preference);
+    setState(() => _themePreference = preference);
   }
 
   Future<void> _saveTtsEngine(TtsEngine engine) async {
@@ -71,10 +79,33 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
+  String _engineHint() {
+    switch (_ttsEngine) {
+      case TtsEngine.cloud:
+        return 'Sans connexion, la synthèse cloud peut échouer — repassez en TTS natif ou Kokoro si besoin.';
+      case TtsEngine.kokoro:
+        return 'Kokoro : synthèse neuronale on-device. Premier usage : téléchargement du modèle.';
+      case TtsEngine.native:
+        return 'TTS natif : fonctionne hors-ligne.';
+    }
+  }
+
+  String _languageHint() {
+    switch (_ttsEngine) {
+      case TtsEngine.cloud:
+        return 'TTS cloud : la langue suit le texte. Ce réglage s’applique au TTS natif et à Kokoro.';
+      case TtsEngine.kokoro:
+        return 'Utilisée pour la phonémisation Kokoro et le filtrage des voix.';
+      case TtsEngine.native:
+        return 'Utilisée pour la synthèse vocale native.';
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final isCloud = _ttsEngine == TtsEngine.cloud;
+    final isKokoro = _ttsEngine == TtsEngine.kokoro;
 
     return Scaffold(
       appBar: AppBar(
@@ -84,19 +115,52 @@ class _SettingsScreenState extends State<SettingsScreen> {
         padding: const EdgeInsets.all(20),
         children: [
           Text(
+            'Apparence',
+            style: theme.textTheme.titleMedium,
+          ),
+          const SizedBox(height: 12),
+          SegmentedButton<ThemePreference>(
+            showSelectedIcon: false,
+            segments: const [
+              ButtonSegment(
+                value: ThemePreference.system,
+                label: Text('Système'),
+                icon: Icon(Icons.brightness_auto),
+              ),
+              ButtonSegment(
+                value: ThemePreference.light,
+                label: Text('Clair'),
+                icon: Icon(Icons.light_mode),
+              ),
+              ButtonSegment(
+                value: ThemePreference.dark,
+                label: Text('Sombre'),
+                icon: Icon(Icons.dark_mode),
+              ),
+            ],
+            selected: {_themePreference},
+            onSelectionChanged: (selection) => _saveTheme(selection.first),
+          ),
+          const SizedBox(height: 32),
+          Text(
             'Synthèse vocale',
             style: theme.textTheme.titleMedium,
           ),
           const SizedBox(height: 12),
           SegmentedButton<TtsEngine>(
+            showSelectedIcon: false,
             segments: const [
               ButtonSegment(
                 value: TtsEngine.native,
-                label: Text('TTS natif'),
+                label: Text('Natif'),
               ),
               ButtonSegment(
                 value: TtsEngine.cloud,
-                label: Text('TTS cloud'),
+                label: Text('Cloud'),
+              ),
+              ButtonSegment(
+                value: TtsEngine.kokoro,
+                label: Text('Kokoro'),
               ),
             ],
             selected: {_ttsEngine},
@@ -104,9 +168,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ),
           const SizedBox(height: 12),
           Text(
-            isCloud
-                ? 'Sans connexion, la synthèse cloud peut échouer — repassez en TTS natif si besoin.'
-                : 'TTS natif : fonctionne hors-ligne.',
+            _engineHint(),
             style: theme.textTheme.bodySmall?.copyWith(
               color: theme.colorScheme.onSurfaceVariant,
             ),
@@ -186,6 +248,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
               ),
             ),
           ],
+          if (isKokoro) ...[
+            const SizedBox(height: 24),
+            KokoroTtsSettingsSection(key: ValueKey(_ttsLanguage)),
+          ],
           const SizedBox(height: 24),
           Text(
             'Langue de lecture',
@@ -210,9 +276,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ),
           const SizedBox(height: 8),
           Text(
-            isCloud
-                ? 'TTS cloud : la langue suit le texte. Ce réglage s’applique au TTS natif (hors-ligne).'
-                : 'Utilisée pour la synthèse vocale native.',
+            _languageHint(),
             style: theme.textTheme.bodySmall?.copyWith(
               color: theme.colorScheme.onSurfaceVariant,
             ),

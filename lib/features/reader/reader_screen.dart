@@ -5,6 +5,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../core/theme/app_theme.dart';
+import '../../data/repositories/audio_progress_repository.dart';
 import '../../data/repositories/favorites_repository.dart';
 import '../../data/repositories/settings_repository.dart';
 import '../../services/audio_playback_service.dart';
@@ -50,6 +51,7 @@ class _ReaderScreenState extends State<ReaderScreen> {
   String? _favoriteId;
   bool _isNavigating = false;
   bool _showHints = false;
+  bool _autoPlay = false;
 
   Timer? _saveDebounce;
   Timer? _idleTimer;
@@ -174,7 +176,7 @@ class _ReaderScreenState extends State<ReaderScreen> {
     );
   }
 
-  Future<void> _navigateTo(String url) async {
+  Future<void> _navigateTo(String url, {bool autoPlay = false}) async {
     await _persistProgress();
     await _audioPlayback.stop();
     if (!mounted) return;
@@ -182,6 +184,7 @@ class _ReaderScreenState extends State<ReaderScreen> {
     setState(() {
       _isNavigating = true;
       _showHints = false;
+      _autoPlay = autoPlay;
     });
 
     try {
@@ -202,6 +205,8 @@ class _ReaderScreenState extends State<ReaderScreen> {
         );
       }
 
+      _chapterLoader.onChapterDisplayed(chapter);
+      _audioLoader.onChapterDisplayed(chapter);
       _scheduleIdleHints();
     } on NovelExtractionException catch (error) {
       if (mounted) _showNavigationMessage(error.message);
@@ -214,6 +219,13 @@ class _ReaderScreenState extends State<ReaderScreen> {
         setState(() => _isNavigating = false);
       }
     }
+  }
+
+  Future<void> _onChapterAudioFinished() async {
+    await AudioProgressRepository.instance.delete(_currentChapter.sourceUrl);
+    final nextUrl = _currentChapter.nextUrl;
+    if (nextUrl == null || !mounted) return;
+    await _navigateTo(nextUrl, autoPlay: true);
   }
 
   Future<void> _openSource() async {
@@ -309,8 +321,9 @@ class _ReaderScreenState extends State<ReaderScreen> {
             ),
             IconButton(
               tooltip: isDarkMode ? 'Mode clair' : 'Mode sombre',
-              onPressed: () =>
-                  _settingsRepository.setDarkMode(!isDarkMode),
+              onPressed: () => _settingsRepository.setThemePreference(
+                isDarkMode ? ThemePreference.light : ThemePreference.dark,
+              ),
               icon: Icon(isDarkMode ? Icons.light_mode : Icons.dark_mode),
             ),
             IconButton(
@@ -389,10 +402,11 @@ class _ReaderScreenState extends State<ReaderScreen> {
                   ),
                 ),
                 ChapterAudioPlayerBar(
-                  key: ValueKey(_currentChapter.sourceUrl),
                   chapter: _currentChapter,
                   playback: _audioPlayback,
                   audioLoader: _audioLoader,
+                  autoPlay: _autoPlay,
+                  onChapterFinished: _onChapterAudioFinished,
                 ),
               ],
             ),
