@@ -276,7 +276,7 @@ class ChapterAudioPlayerBarState extends State<ChapterAudioPlayerBar> {
       sourceUrl: widget.chapter.sourceUrl,
       firstSegmentPath: firstPath,
       title: widget.chapter.title,
-      keepCpuAwake: session.engine == TtsEngine.kokoro,
+      keepCpuAwake: true,
       produceNextSegment: () async {
         final path = await session.synthesizeNext();
         if (mounted && session.engine == TtsEngine.kokoro) {

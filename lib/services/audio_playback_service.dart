@@ -111,13 +111,16 @@ class AudioPlaybackService {
   }
 
   /// Démarre la lecture dès le premier segment, puis ajoute les suivants.
+  ///
+  /// [keepCpuAwake] reste actif jusqu'à la fin de la synthèse restante, pour
+  /// que l'app ne soit pas gelée entre deux segments en veille / background.
   Future<void> playProgressive({
     required String sourceUrl,
     required String firstSegmentPath,
     required Future<String?> Function() produceNextSegment,
     Future<void> Function()? onAllSegmentsLoaded,
     String? title,
-    bool keepCpuAwake = false,
+    bool keepCpuAwake = true,
   }) async {
     await _ensureAudioSession();
     _cancelAppend();

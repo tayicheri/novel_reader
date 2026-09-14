@@ -9,11 +9,20 @@ class NativeTtsProvider implements TtsProvider {
   NativeTtsProvider({
     FlutterTts? tts,
     String Function()? languageCode,
+    bool? isIOS,
+    bool? isAndroid,
+    bool? isMacOS,
   })  : _tts = tts ?? FlutterTts(),
-        _languageCode = languageCode ?? (() => 'en-US');
+        _languageCode = languageCode ?? (() => 'en-US'),
+        _isIOS = isIOS ?? Platform.isIOS,
+        _isAndroid = isAndroid ?? Platform.isAndroid,
+        _isMacOS = isMacOS ?? Platform.isMacOS;
 
   final FlutterTts _tts;
   final String Function() _languageCode;
+  final bool _isIOS;
+  final bool _isAndroid;
+  final bool _isMacOS;
   bool _awaitSynthConfigured = false;
   String? _appliedLanguage;
   Future<void>? _serialize;
@@ -25,11 +34,29 @@ class NativeTtsProvider implements TtsProvider {
       _appliedLanguage = language;
     }
     if (_awaitSynthConfigured) return;
+    await _configureBackgroundAudio();
     // awaitSpeakCompletion(true) before synthesizeToFile crashes iOS (flutter_tts #290).
-    if (Platform.isIOS || Platform.isAndroid) {
+    if (_isIOS || _isAndroid) {
       await _tts.awaitSynthCompletion(true);
     }
     _awaitSynthConfigured = true;
+  }
+
+  /// Keeps native synthesis alive when the screen locks or the app is backgrounded.
+  Future<void> _configureBackgroundAudio() async {
+    if (_isIOS) {
+      await _tts.setSharedInstance(true);
+      await _tts.setIosAudioCategory(
+        IosTextToSpeechAudioCategory.playback,
+        const [IosTextToSpeechAudioCategoryOptions.mixWithOthers],
+        IosTextToSpeechAudioMode.spokenAudio,
+      );
+      await _tts.autoStopSharedSession(false);
+      return;
+    }
+    if (_isMacOS) {
+      await _tts.autoStopSharedSession(false);
+    }
   }
 
   @override
